@@ -12,6 +12,8 @@ const NAV = [
   { to: "/categories", icon: Tag, label: "Catégories" },
 ];
 
+import { Logo } from "@/components/ui/Logo";
+
 export function Sidebar() {
   const logout = useAuthStore((s) => s.logout);
   const { theme, toggle: toggleTheme } = useThemeStore();
@@ -20,10 +22,7 @@ export function Sidebar() {
     <aside className="hidden md:flex flex-col w-64 h-screen bg-surface-1 border-r border-surface-3 fixed left-0 top-0 z-40">
       {/* Logo */}
       <div className="p-6 pb-2">
-        <h1 className="text-xl font-bold tracking-tight">
-          <span className="text-brand-400">ma</span>Poche
-        </h1>
-        <p className="text-[10px] text-text-muted uppercase tracking-widest mt-0.5">Finances personnelles</p>
+        <Logo size="sm" className="!items-start" />
       </div>
 
       <nav className="flex-1 flex flex-col gap-1 p-3 mt-4">

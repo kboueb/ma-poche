@@ -19,7 +19,7 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
     set({ loading: true });
     let q = supabase
       .from("transactions")
-      .select("*, account:accounts(*), category:categories(*)")
+      .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*)")
       .order("date", { ascending: false })
       .limit(200);
 
@@ -35,9 +35,26 @@ export const useTransactionsStore = create<TransactionsState>((set, get) => ({
 
   add: async (t) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase.from("transactions").insert({ ...t, user_id: user.id }).select("*, account:accounts(*), category:categories(*)").single();
-    if (data) set((s) => ({ transactions: [data as Transaction, ...s.transactions] }));
+    if (!user) {
+      console.error("Erreur: Utilisateur non trouvé");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .insert({ ...t, user_id: user.id })
+      .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*)")
+      .single();
+
+    if (error) {
+      console.error("Erreur Supabase lors de l'insertion:", error);
+      alert("Erreur lors de la création de la transaction: " + error.message);
+      return;
+    }
+
+    if (data) {
+      set((s) => ({ transactions: [data as Transaction, ...s.transactions] }));
+    }
   },
 
   remove: async (id) => {

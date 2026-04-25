@@ -102,14 +102,16 @@ CREATE POLICY "assets_delete" ON assets FOR DELETE USING (user_id = auth.uid());
 CREATE TABLE liabilities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users NOT NULL,
+  account_id UUID REFERENCES accounts(id) ON DELETE SET NULL, -- Compte de débit
   name TEXT NOT NULL,
-  type TEXT CHECK (type IN ('mortgage','car_loan','consumer_credit','student_loan','other')) NOT NULL,
-  initial_amount NUMERIC(14,2) NOT NULL,
+  type TEXT CHECK (type IN ('mortgage','car_loan','student_loan','personal_loan','credit_card','other')) NOT NULL,
+  total_amount NUMERIC(14,2) NOT NULL,
   remaining_amount NUMERIC(14,2) NOT NULL,
-  interest_rate NUMERIC(5,3),
-  monthly_payment NUMERIC(10,2),
+  interest_rate NUMERIC(5,2),
+  monthly_payment NUMERIC(12,2),
+  start_date DATE,
   end_date DATE,
-  linked_asset_id UUID REFERENCES assets(id) ON DELETE SET NULL,
+  notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

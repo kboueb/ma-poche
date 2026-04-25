@@ -3,6 +3,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Mail, Lock, ArrowRight } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 export default function LoginPage() {
   const { login, register } = useAuthStore();
@@ -28,9 +29,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-sm space-y-8 relative z-10">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-brand-400">ma</span>Poche
-          </h1>
+          <Logo size="lg" showTagline className="mb-4" />
           <p className="text-text-muted text-sm mt-2">
             {isLogin ? "Connecte-toi à ton espace" : "Crée ton compte gratuit"}
           </p>

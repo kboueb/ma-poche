@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { Loader2 } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 import LoginPage from "./LoginPage";
 
 // Lazy-loaded pages
@@ -17,8 +18,8 @@ const CategoriesPage = lazy(() => import("@/features/categories/CategoriesPage")
 
 function PageLoader() {
   return (
-    <div className="flex-1 flex items-center justify-center">
-      <Loader2 className="w-6 h-6 animate-spin text-brand-400" />
+    <div className="flex-1 flex flex-col items-center justify-center gap-4 animate-in fade-in duration-500">
+      <Logo size="md" className="animate-pulse" />
     </div>
   );
 }
@@ -62,10 +63,12 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-brand-400" />
-          <p className="text-xs text-text-muted uppercase tracking-widest">maPoche</p>
+      <div className="min-h-screen bg-surface-0 flex items-center justify-center animate-in fade-in duration-700">
+        <div className="flex flex-col items-center gap-6">
+          <Logo size="lg" showTagline className="animate-pulse" />
+          <div className="w-32 h-1 bg-surface-2 rounded-full overflow-hidden relative">
+            <div className="absolute inset-0 bg-brand-500 animate-progress origin-left" />
+          </div>
         </div>
       </div>
     );

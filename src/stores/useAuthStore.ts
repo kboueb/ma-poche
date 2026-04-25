@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
-import { seedDefaultCategories } from "@/lib/seed";
+import { seedDefaultCategories, seedDefaultAccounts } from "@/lib/seed";
 import { translateError } from "@/lib/utils/errors";
 import type { User } from "@supabase/supabase-js";
 
@@ -21,12 +21,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       seedDefaultCategories(session.user.id).catch(() => {});
+      seedDefaultAccounts(session.user.id).catch(() => {});
     }
     set({ user: session?.user ?? null, loading: false });
 
     supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         seedDefaultCategories(session.user.id).catch(() => {});
+        seedDefaultAccounts(session.user.id).catch(() => {});
       }
       set({ user: session?.user ?? null });
     });

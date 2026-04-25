@@ -9,16 +9,18 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
       manifest: {
-        name: "maPoche — Finances personnelles",
+        name: "maPoche Finance",
         short_name: "maPoche",
-        description: "Gérez vos dépenses, revenus et patrimoine",
-        theme_color: "#0f0f13",
+        description: "Gestion financière personnelle et patrimoine",
+        theme_color: "#10b981",
         background_color: "#0f0f13",
         display: "standalone",
+        orientation: "portrait",
         start_url: "/",
         icons: [
-          { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "/logo.png", sizes: "192x192", type: "image/png" },
+          { src: "/logo.png", sizes: "512x512", type: "image/png" },
+          { src: "/logo.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {

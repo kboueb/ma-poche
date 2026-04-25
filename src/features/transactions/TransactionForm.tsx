@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -29,6 +29,13 @@ export default function TransactionForm({ onClose, accounts, categories }: Props
   const [description, setDescription] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Auto-select first account if not set
+  useEffect(() => {
+    if (!accountId && accounts.length > 0) {
+      setAccountId(accounts[0].id);
+    }
+  }, [accounts, accountId]);
 
   const filteredCategories = categories.filter(
     (c) => c.flow === "both" || c.flow === flow || (flow === "transfer" && c.flow === "both")

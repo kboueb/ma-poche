@@ -49,3 +49,21 @@ export async function seedDefaultCategories(userId: string): Promise<void> {
     await supabase.from("categories").insert(toInsert);
   }
 }
+
+export async function seedDefaultAccounts(userId: string): Promise<void> {
+  const { count } = await supabase
+    .from("accounts")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if (count && count > 0) return;
+
+  await supabase.from("accounts").insert({
+    user_id: userId,
+    name: "Compte Courant",
+    type: "checking",
+    institution: "Ma Banque",
+    currency: "XOF",
+    color: "#10b981",
+  });
+}

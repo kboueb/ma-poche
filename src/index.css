@@ -11,22 +11,24 @@
     --surface-3: #e9ecef;
     --surface-4: #dee2e6;
     --surface-5: #ced4da;
-    --text-primary: #212529;
-    --text-secondary: #495057;
-    --text-muted: #868e96;
+    --text-primary: #1e293b; /* Slate 800 du logo */
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --brand-500: #10b981; /* Emeraude du logo */
   }
 
   /* ====== DARK THEME ====== */
   .dark {
-    --surface-0: #0f0f13;
-    --surface-1: #16161d;
-    --surface-2: #1e1e28;
-    --surface-3: #262633;
-    --surface-4: #2f2f3d;
-    --surface-5: #3a3a4a;
-    --text-primary: #f0f0f5;
-    --text-secondary: #9ca3af;
-    --text-muted: #6b7280;
+    --surface-0: #0f172a; /* Bleu très sombre */
+    --surface-1: #1e293b;
+    --surface-2: #334155;
+    --surface-3: #475569;
+    --surface-4: #64748b;
+    --surface-5: #94a3b8;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --brand-500: #10b981;
   }
 
   * { 
@@ -67,5 +69,15 @@
   .dark .glass {
     background: rgba(30, 30, 40, 0.6);
   }
+
+  @keyframes progress {
+    0% { transform: scaleX(0); }
+    50% { transform: scaleX(0.7); }
+    100% { transform: scaleX(1); }
+  }
+  .animate-progress {
+    animation: progress 2s infinite ease-in-out;
+  }
 }
+
 

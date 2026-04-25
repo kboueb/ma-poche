@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ====== LIGHT THEME (default) ====== */
+  :root {
+    --surface-0: #f8f9fa;
+    --surface-1: #ffffff;
+    --surface-2: #f1f3f5;
+    --surface-3: #e9ecef;
+    --surface-4: #dee2e6;
+    --surface-5: #ced4da;
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #868e96;
+  }
+
+  /* ====== DARK THEME ====== */
+  .dark {
+    --surface-0: #0f0f13;
+    --surface-1: #16161d;
+    --surface-2: #1e1e28;
+    --surface-3: #262633;
+    --surface-4: #2f2f3d;
+    --surface-5: #3a3a4a;
+    --text-primary: #f0f0f5;
+    --text-secondary: #9ca3af;
+    --text-muted: #6b7280;
+  }
+
+  * { 
+    margin: 0; padding: 0; box-sizing: border-box;
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  }
+  html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+  body { 
+    overflow-x: hidden; 
+    min-height: 100dvh;
+    @apply bg-surface-0 text-text-primary;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  .dark ::-webkit-scrollbar-thumb { background: #3a3a4a; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 10px; }
+
+  /* Number inputs without spinners */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] { -moz-appearance: textfield; }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(30, 30, 40, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  :root .glass {
+    background: rgba(255, 255, 255, 0.7);
+  }
+  .dark .glass {
+    background: rgba(30, 30, 40, 0.6);
+  }
+}
+

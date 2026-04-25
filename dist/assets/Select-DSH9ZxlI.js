@@ -1,0 +1,6 @@
+import{c as x,r as i,j as e,t as d,a as u}from"./index-DevGUTWX.js";/**
+ * @license lucide-react v0.460.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const m=x("ChevronDown",[["path",{d:"m6 9 6 6 6-6",key:"qrunsl"}]]),p=i.forwardRef(({label:a,error:s,options:n,placeholder:r,className:o,...l},c)=>e.jsxs("div",{className:"flex flex-col gap-1.5",children:[a&&e.jsx("label",{className:"text-xs font-medium text-text-muted uppercase tracking-wider",children:a}),e.jsxs("div",{className:"relative",children:[e.jsxs("select",{ref:c,className:d(u("w-full bg-surface-2 border border-surface-4 rounded-xl px-4 py-2.5 pr-10 text-sm text-text-primary outline-none transition-colors appearance-none","focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30",s&&"border-rose-500",o)),...l,children:[r&&e.jsx("option",{value:"",children:r}),n.map(t=>e.jsx("option",{value:t.value,children:t.label},t.value))]}),e.jsx(m,{className:"absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none"})]}),s&&e.jsx("p",{className:"text-xs text-rose-400 font-medium",children:s})]}));p.displayName="Select";export{p as S};

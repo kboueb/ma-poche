@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ArrowLeftRight, PieChart, Building2, Target, Settings, LogOut, Sun, Moon, Tag } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, PieChart, Building2, Target, Settings, LogOut, Sun, Moon, Tag, Wallet } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useThemeStore } from "@/stores/useThemeStore";
 
 const NAV = [
   { to: "/", icon: LayoutDashboard, label: "Tableau de bord" },
   { to: "/transactions", icon: ArrowLeftRight, label: "Transactions" },
+  { to: "/accounts", icon: Wallet, label: "Comptes" },
   { to: "/budgets", icon: PieChart, label: "Budgets" },
   { to: "/patrimoine", icon: Building2, label: "Patrimoine" },
   { to: "/objectifs", icon: Target, label: "Objectifs" },

@@ -63,6 +63,8 @@ export async function seedDefaultAccounts(userId: string): Promise<void> {
     name: "Compte Courant",
     type: "checking",
     institution: "Ma Banque",
+    initial_balance: 0,
+    current_balance: 0,
     currency: "XOF",
     color: "#10b981",
   });

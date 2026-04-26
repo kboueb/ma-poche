@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
 import { seedDefaultCategories, seedDefaultAccounts } from "@/lib/seed";
+import { syncLiabilityPayments } from "@/lib/services/recurringService";
 import { translateError } from "@/lib/utils/errors";
 import type { User } from "@supabase/supabase-js";
 
@@ -22,6 +23,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (session?.user) {
       seedDefaultCategories(session.user.id).catch(() => {});
       seedDefaultAccounts(session.user.id).catch(() => {});
+      syncLiabilityPayments(session.user.id).catch(() => {});
     }
     set({ user: session?.user ?? null, loading: false });
 
@@ -29,6 +31,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (session?.user) {
         seedDefaultCategories(session.user.id).catch(() => {});
         seedDefaultAccounts(session.user.id).catch(() => {});
+        syncLiabilityPayments(session.user.id).catch(() => {});
       }
       set({ user: session?.user ?? null });
     });

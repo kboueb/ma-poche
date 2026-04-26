@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
+import { useAccountsStore } from "@/stores/useAccountsStore";
 import { formatCurrency, formatPercent } from "@/lib/utils/currency";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, Building2, TrendingUp, TrendingDown, CreditCard } from "lucide-react";
+import { Plus, Building2, TrendingUp, TrendingDown, CreditCard, Trash2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import type { Asset, Liability } from "@/types";
 
@@ -28,11 +29,12 @@ const LIABILITY_TYPES = [
 ];
 
 const COLORS: Record<string, string> = {
-  real_estate: "#6366f1", stock: "#10b981", etf: "#34d399", crypto: "#f59e0b",
-  savings_account: "#3b82f6", life_insurance: "#8b5cf6", other: "#94a3b8",
+  real_estate: "#10b981", stock: "#3b82f6", etf: "#34d399", crypto: "#f59e0b",
+  savings_account: "#6366f1", life_insurance: "#8b5cf6", other: "#94a3b8",
 };
 
 export default function PatrimoinePage() {
+  const { accounts, fetch: fetchAcc } = useAccountsStore();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,12 +51,13 @@ export default function PatrimoinePage() {
   // Liability form
   const [lName, setLName] = useState("");
   const [lType, setLType] = useState("mortgage");
-  const [lInitial, setLInitial] = useState("");
+  const [lTotal, setLTotal] = useState("");
   const [lRemaining, setLRemaining] = useState("");
   const [lRate, setLRate] = useState("");
   const [lMonthly, setLMonthly] = useState("");
+  const [lAccount, setLAccount] = useState("");
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); fetchAcc(); }, []);
 
   const loadAll = async () => {
     const [{ data: a }, { data: l }] = await Promise.all([
@@ -84,21 +87,74 @@ export default function PatrimoinePage() {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from("assets").insert({ user_id: user.id, name: aName, type: aType, current_value: parseFloat(aValue), purchase_price: aPurchase ? parseFloat(aPurchase) : null });
-      await loadAll();
+      const { error } = await supabase.from("assets").insert({ 
+        user_id: user.id, 
+        name: aName, 
+        type: aType, 
+        current_value: parseFloat(aValue), 
+        purchase_price: aPurchase ? parseFloat(aPurchase) : null 
+      });
+      if (error) {
+        console.error("Erreur actif:", error);
+        alert("Erreur lors de la création de l'actif: " + error.message);
+      } else {
+        await loadAll();
+        setAssetOpen(false); setAName(""); setAValue(""); setAPurchase("");
+      }
     }
-    setSaving(false); setAssetOpen(false); setAName(""); setAValue(""); setAPurchase("");
+    setSaving(false);
   };
 
   const addLiab = async () => {
-    if (!lName || !lInitial || !lRemaining) return;
+    if (!lName || !lTotal || !lRemaining) return;
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from("liabilities").insert({ user_id: user.id, name: lName, type: lType, initial_amount: parseFloat(lInitial), remaining_amount: parseFloat(lRemaining), interest_rate: lRate ? parseFloat(lRate) : null, monthly_payment: lMonthly ? parseFloat(lMonthly) : null });
-      await loadAll();
+      const payload: any = { 
+        user_id: user.id, 
+        name: lName, 
+        type: lType, 
+        initial_amount: parseFloat(lTotal), 
+        remaining_amount: parseFloat(lRemaining), 
+        interest_rate: lRate ? parseFloat(lRate) : null, 
+        monthly_payment: lMonthly ? parseFloat(lMonthly) : null,
+      };
+
+      // On n'ajoute account_id que si l'utilisateur a fait un choix (pour éviter l'erreur si la colonne n'existe pas encore)
+      if (lAccount) {
+        payload.account_id = lAccount;
+      }
+
+      const { error } = await supabase.from("liabilities").insert(payload);
+      
+      if (error) {
+        console.error("Erreur passif:", error);
+        // Si l'erreur est spécifiquement sur account_id, on réessaie sans
+        if (error.message.includes("account_id")) {
+          const { account_id, ...fallbackPayload } = payload;
+          const { error: retryError } = await supabase.from("liabilities").insert(fallbackPayload);
+          if (retryError) {
+            alert("Erreur: " + retryError.message);
+          } else {
+            alert("⚠️ Passif créé sans le débit auto (la colonne 'account_id' manque dans ta base Supabase).");
+            await loadAll();
+            setLiabOpen(false);
+          }
+        } else {
+          alert("Erreur: " + error.message);
+        }
+      } else {
+        await loadAll();
+        setLiabOpen(false); setLName(""); setLTotal(""); setLRemaining(""); setLRate(""); setLMonthly(""); setLAccount("");
+      }
     }
-    setSaving(false); setLiabOpen(false); setLName(""); setLInitial(""); setLRemaining(""); setLRate(""); setLMonthly("");
+    setSaving(false);
+  };
+
+  const removeItem = async (table: "assets" | "liabilities", id: string) => {
+    if (!confirm("Supprimer cet élément ?")) return;
+    await supabase.from(table).delete().eq("id", id);
+    await loadAll();
   };
 
   return (
@@ -106,7 +162,7 @@ export default function PatrimoinePage() {
       <h1 className="text-2xl font-bold tracking-tight">Patrimoine</h1>
 
       {/* Net worth */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5">
           <p className="text-xs text-text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-emerald-400" />Actifs</p>
           <p className="text-xl font-bold font-mono text-emerald-400">{formatCurrency(totalAssets)}</p>
@@ -157,7 +213,7 @@ export default function PatrimoinePage() {
         {assets.map((a) => {
           const pv = a.purchase_price ? ((Number(a.current_value) - Number(a.purchase_price)) / Number(a.purchase_price)) * 100 : null;
           return (
-            <div key={a.id} className="bg-surface-1 border border-surface-3 rounded-2xl p-4 flex items-center gap-4">
+            <div key={a.id} className="bg-surface-1 border border-surface-3 rounded-2xl p-4 flex items-center gap-4 group">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ backgroundColor: `${COLORS[a.type]}20`, color: COLORS[a.type] }}>
                 {ASSET_TYPES.find((t) => t.value === a.type)?.label.slice(0, 2)}
               </div>
@@ -165,14 +221,18 @@ export default function PatrimoinePage() {
                 <p className="text-sm font-semibold truncate">{a.name}</p>
                 <p className="text-[11px] text-text-muted">{ASSET_TYPES.find((t) => t.value === a.type)?.label.slice(2)}</p>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-mono font-bold">{formatCurrency(Number(a.current_value))}</p>
-                {pv !== null && <p className={`text-[11px] font-mono ${pv >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{pv >= 0 ? "+" : ""}{pv.toFixed(1)}%</p>}
+              <div className="text-right flex items-center gap-4">
+                <div>
+                  <p className="text-sm font-mono font-bold">{formatCurrency(Number(a.current_value))}</p>
+                  {pv !== null && <p className={`text-[11px] font-mono ${pv >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{pv >= 0 ? "+" : ""}{pv.toFixed(1)}%</p>}
+                </div>
+                <button onClick={() => removeItem("assets", a.id)} className="p-2 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all">
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           );
         })}
-        {assets.length === 0 && !loading && <p className="text-center text-text-muted text-sm py-8">Aucun actif</p>}
       </div>
 
       {/* Liabilities */}
@@ -182,19 +242,23 @@ export default function PatrimoinePage() {
       </div>
       <div className="space-y-2">
         {liabilities.map((l) => (
-          <div key={l.id} className="bg-surface-1 border border-surface-3 rounded-2xl p-4 flex items-center gap-4">
+          <div key={l.id} className="bg-surface-1 border border-surface-3 rounded-2xl p-4 flex items-center gap-4 group">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-500/10 text-rose-400"><CreditCard className="w-5 h-5" /></div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{l.name}</p>
               <p className="text-[11px] text-text-muted">{l.monthly_payment ? `${formatCurrency(Number(l.monthly_payment))}/mois` : ""} {l.interest_rate ? `· ${l.interest_rate}%` : ""}</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-mono font-bold text-rose-400">{formatCurrency(Number(l.remaining_amount))}</p>
-              <p className="text-[11px] text-text-muted">/{formatCurrency(Number(l.initial_amount))}</p>
+            <div className="text-right flex items-center gap-4">
+                <div>
+                <p className="text-sm font-mono font-bold text-rose-400">{formatCurrency(Number(l.remaining_amount))}</p>
+                <p className="text-[11px] text-text-muted">/{formatCurrency(Number(l.initial_amount || 0))}</p>
+              </div>
+              <button onClick={() => removeItem("liabilities", l.id)} className="p-2 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all">
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           </div>
         ))}
-        {liabilities.length === 0 && !loading && <p className="text-center text-text-muted text-sm py-8">Aucun passif</p>}
       </div>
 
       {/* Add Asset Modal */}
@@ -216,10 +280,11 @@ export default function PatrimoinePage() {
         <div className="space-y-4">
           <Input label="Nom" value={lName} onChange={(e) => setLName(e.target.value)} placeholder="Crédit appartement..." />
           <Select label="Type" options={LIABILITY_TYPES} value={lType} onChange={(e) => setLType(e.target.value)} />
-          <Input label="Montant initial" type="number" step="0.01" value={lInitial} onChange={(e) => setLInitial(e.target.value)} />
+          <Input label="Montant initial" type="number" step="0.01" value={lTotal} onChange={(e) => setLTotal(e.target.value)} />
           <Input label="Capital restant" type="number" step="0.01" value={lRemaining} onChange={(e) => setLRemaining(e.target.value)} />
           <Input label="Taux (%)" type="number" step="0.001" value={lRate} onChange={(e) => setLRate(e.target.value)} />
           <Input label="Mensualité" type="number" step="0.01" value={lMonthly} onChange={(e) => setLMonthly(e.target.value)} />
+          <Select label="Compte de débit automatique" options={[{ value: "", label: "Aucun débit auto" }, ...accounts.map(a => ({ value: a.id, label: a.name }))]} value={lAccount} onChange={(e) => setLAccount(e.target.value)} />
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" className="flex-1" onClick={() => setLiabOpen(false)}>Annuler</Button>
             <Button className="flex-1" loading={saving} onClick={addLiab}>Ajouter</Button>
@@ -229,3 +294,4 @@ export default function PatrimoinePage() {
     </div>
   );
 }
+

@@ -6,7 +6,7 @@ interface AccountsState {
   accounts: Account[];
   loading: boolean;
   fetch: () => Promise<void>;
-  add: (a: Pick<Account, "name" | "type" | "institution" | "currency" | "color" | "is_liquid">) => Promise<void>;
+  add: (a: Pick<Account, "name" | "type" | "institution" | "currency" | "color" | "initial_balance" | "current_balance">) => Promise<void>;
   remove: (id: string) => Promise<void>;
 }
 

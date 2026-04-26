@@ -4,7 +4,6 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useThemeStore } from "@/stores/useThemeStore";
-import { Loader2 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import LoginPage from "./LoginPage";
 

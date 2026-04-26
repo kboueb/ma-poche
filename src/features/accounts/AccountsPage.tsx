@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, Wallet, Landmark, CreditCard, Trash2, Pencil } from "lucide-react";
+import { Plus, Wallet, Landmark, CreditCard, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/currency";
 
 const ACCOUNT_TYPES = [

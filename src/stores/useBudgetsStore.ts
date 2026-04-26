@@ -11,7 +11,7 @@ interface BudgetsState {
   update: (id: string, data: Partial<Budget>) => Promise<void>;
 }
 
-export const useBudgetsStore = create<BudgetsState>((set, get) => ({
+export const useBudgetsStore = create<BudgetsState>((set) => ({
   budgets: [],
   loading: false,
 

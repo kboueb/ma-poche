@@ -2,7 +2,7 @@
 // maPoche — Types globaux
 // =============================================
 
-export type AccountType = "checking" | "savings" | "credit" | "investment" | "cash" | "other";
+export type AccountType = "checking" | "savings" | "credit" | "investment" | "cash" | "mobile_money" | "other";
 export type FlowType = "income" | "expense" | "transfer";
 export type CategoryFlow = "income" | "expense" | "both";
 export type AssetType = "real_estate" | "stock" | "etf" | "crypto" | "savings_account" | "life_insurance" | "other";
@@ -15,6 +15,8 @@ export interface Account {
   name: string;
   type: AccountType;
   institution: string | null;
+  initial_balance: number;
+  current_balance: number;
   currency: string;
   color: string;
   is_liquid: boolean;

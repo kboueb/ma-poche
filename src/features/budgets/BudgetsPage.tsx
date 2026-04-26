@@ -54,7 +54,6 @@ export default function BudgetsPage() {
   // Form state
   const [formCat, setFormCat] = useState("");
   const [formAmount, setFormAmount] = useState("");
-  const [formPeriod, setFormPeriod] = useState<"monthly" | "yearly">("monthly");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { fetchTx(); fetchCat(); fetchBudgets(); }, [fetchTx, fetchCat, fetchBudgets]);
@@ -79,8 +78,9 @@ export default function BudgetsPage() {
     await add({
       category_id: formCat,
       amount: parseFloat(formAmount),
-      period: formPeriod,
+      period: "monthly",
       active_from: start.toISOString().slice(0, 10),
+      active_to: null,
       rollover: false,
       alert_threshold: 80,
     });

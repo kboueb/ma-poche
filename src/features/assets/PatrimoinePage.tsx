@@ -37,7 +37,6 @@ export default function PatrimoinePage() {
   const { accounts, fetch: fetchAcc } = useAccountsStore();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
-  const [loading, setLoading] = useState(true);
   const [assetOpen, setAssetOpen] = useState(false);
   const [liabOpen, setLiabOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -66,7 +65,6 @@ export default function PatrimoinePage() {
     ]);
     setAssets((a as Asset[]) || []);
     setLiabilities((l as Liability[]) || []);
-    setLoading(false);
   };
 
   const totalAssets = useMemo(() => assets.reduce((s, a) => s + Number(a.current_value), 0), [assets]);

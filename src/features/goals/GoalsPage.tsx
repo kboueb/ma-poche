@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { formatCurrency } from "@/lib/utils/currency";
 import { daysUntil, formatDate } from "@/lib/utils/dates";

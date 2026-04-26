@@ -11,7 +11,7 @@ interface TransactionsState {
   update: (id: string, data: Partial<Transaction>) => Promise<void>;
 }
 
-export const useTransactionsStore = create<TransactionsState>((set, get) => ({
+export const useTransactionsStore = create<TransactionsState>((set) => ({
   transactions: [],
   loading: false,
 

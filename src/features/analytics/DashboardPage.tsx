@@ -5,8 +5,8 @@ import { formatCurrency, formatCompact } from "@/lib/utils/currency";
 import { formatDate, getMonthRange, getLast12Months } from "@/lib/utils/dates";
 import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank } from "lucide-react";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/utils/labels";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Line, ComposedChart } from "recharts";
-import { format, parseISO, isWithinInterval } from "date-fns";
+import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Line, ComposedChart } from "recharts";
+import { parseISO, isWithinInterval } from "date-fns";
 
 function StatCard({ label, value, icon: Icon, color, sub }: { label: string; value: string; icon: React.ElementType; color: string; sub?: string }) {
   return (

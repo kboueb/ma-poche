@@ -38,7 +38,7 @@ export default function TransactionForm({ onClose, accounts, categories }: Props
   }, [accounts, accountId]);
 
   const filteredCategories = categories.filter(
-    (c) => c.flow === "both" || c.flow === flow || (flow === "transfer" && c.flow === "both")
+    (c) => c.flow === "both" || (c.flow as string) === (flow as string)
   );
 
   const handleSubmit = async (e: React.FormEvent) => {

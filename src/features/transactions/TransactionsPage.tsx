@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, ArrowLeftRight, Trash2, Check, Upload } from "lucide-react";
+import { Plus, Search, ArrowUpRight, ArrowDownRight, ArrowLeftRight, Trash2, Check, Upload } from "lucide-react";
 import TransactionForm from "./TransactionForm";
 import TransactionImport from "./TransactionImport";
 

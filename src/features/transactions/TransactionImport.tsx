@@ -2,11 +2,10 @@ import { useState, useCallback, useMemo } from "react";
 import { parseCSVText, applyMapping, dedup, type ParsedRow, type CSVMapping } from "@/lib/parsers/csvParser";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatDate } from "@/lib/utils/dates";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
-import { Upload, FileSpreadsheet, Check, AlertCircle } from "lucide-react";
+import { Upload, FileSpreadsheet, Check } from "lucide-react";
 import type { Account } from "@/types";
 
 interface Props {

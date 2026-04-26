@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, Pencil, Trash2, Tag, Sparkles } from "lucide-react";
+import { Plus, Trash2, Tag, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { seedDefaultCategories } from "@/lib/seed";
 import { useAuthStore } from "@/stores/useAuthStore";

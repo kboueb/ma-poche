@@ -5,10 +5,10 @@ import { daysUntil, formatDate } from "@/lib/utils/dates";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
-import { Plus, Target, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Target, Clock, CheckCircle2, AlertCircle, PiggyBank, History } from "lucide-react";
 import type { Goal } from "@/types";
 
-function GoalStatus({ goal }: { goal: Goal }) {
+function GoalStatus({ goal, onContribute }: { goal: Goal, onContribute: (goal: Goal) => void }) {
   const pct = goal.target_amount > 0 ? (Number(goal.current_amount) / Number(goal.target_amount)) * 100 : 0;
   const days = goal.deadline ? daysUntil(goal.deadline) : null;
   const monthsLeft = days !== null ? Math.max(Math.ceil(days / 30), 1) : null;
@@ -56,14 +56,27 @@ function GoalStatus({ goal }: { goal: Goal }) {
         <p className="text-[11px] text-text-muted text-center">{pct.toFixed(0)}% atteint</p>
       </div>
 
-      {/* Monthly recommendation */}
-      {monthlyNeeded !== null && monthlyNeeded > 0 && !isReached && (
-        <div className="bg-brand-500/5 border border-brand-500/10 rounded-xl px-3 py-2">
-          <p className="text-[11px] text-brand-400 font-medium">
-            💡 Épargnez <span className="font-mono font-bold">{formatCurrency(monthlyNeeded)}</span>/mois pour atteindre l'objectif
-          </p>
-        </div>
-      )}
+      {/* Monthly recommendation & Action */}
+      <div className="flex items-center justify-between gap-3 pt-2">
+        {monthlyNeeded !== null && monthlyNeeded > 0 && !isReached ? (
+          <div className="bg-brand-500/5 border border-brand-500/10 rounded-xl px-3 py-2 flex-1">
+            <p className="text-[11px] text-brand-400 font-medium">
+              💡 Épargnez <span className="font-mono font-bold">{formatCurrency(monthlyNeeded)}</span>/mois
+            </p>
+          </div>
+        ) : (
+          <div className="flex-1" />
+        )}
+        <Button 
+          variant="secondary" 
+          size="sm" 
+          className="h-9 px-4 rounded-xl gap-2"
+          onClick={() => onContribute(goal)}
+        >
+          <PiggyBank className="w-4 h-4" />
+          Verser
+        </Button>
+      </div>
     </div>
   );
 }
@@ -77,6 +90,12 @@ export default function GoalsPage() {
   const [current, setCurrent] = useState("0");
   const [deadline, setDeadline] = useState("");
   const [saving, setSaving] = useState(false);
+  
+  // Contribution modal
+  const [contributionOpen, setContributionOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [contributionAmount, setContributionAmount] = useState("");
+  const [contributing, setContributing] = useState(false);
 
   useEffect(() => { loadGoals(); }, []);
 
@@ -100,6 +119,30 @@ export default function GoalsPage() {
     }
     setSaving(false); setFormOpen(false);
     setName(""); setTarget(""); setCurrent("0"); setDeadline("");
+  };
+
+  const handleContribute = async () => {
+    if (!selectedGoal || !contributionAmount) return;
+    setContributing(true);
+    
+    const newAmount = Number(selectedGoal.current_amount) + parseFloat(contributionAmount);
+    
+    const { error } = await supabase
+      .from("goals")
+      .update({ current_amount: newAmount })
+      .eq("id", selectedGoal.id);
+
+    if (!error) {
+      await loadGoals();
+      setContributionOpen(false);
+      setContributionAmount("");
+    }
+    setContributing(false);
+  };
+
+  const openContribution = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setContributionOpen(true);
   };
 
   const totalTarget = goals.reduce((s, g) => s + Number(g.target_amount), 0);
@@ -145,7 +188,7 @@ export default function GoalsPage() {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
-          {goals.map((g) => <GoalStatus key={g.id} goal={g} />)}
+          {goals.map((g) => <GoalStatus key={g.id} goal={g} onContribute={openContribution} />)}
         </div>
       )}
 
@@ -159,6 +202,38 @@ export default function GoalsPage() {
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" className="flex-1" onClick={() => setFormOpen(false)}>Annuler</Button>
             <Button className="flex-1" loading={saving} onClick={addGoal}>Créer</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Contribution modal */}
+      <Modal 
+        isOpen={contributionOpen} 
+        onClose={() => setContributionOpen(false)} 
+        title={`Verser pour "${selectedGoal?.name}"`}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="bg-surface-2 p-4 rounded-2xl flex justify-between items-center">
+            <span className="text-sm text-text-muted">Actuellement</span>
+            <span className="font-mono font-bold text-lg">{formatCurrency(Number(selectedGoal?.current_amount || 0))}</span>
+          </div>
+          
+          <Input 
+            label="Montant à ajouter" 
+            type="number" 
+            step="0.01" 
+            value={contributionAmount} 
+            onChange={(e) => setContributionAmount(e.target.value)} 
+            placeholder="Ex: 5000"
+            autoFocus
+          />
+          
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setContributionOpen(false)}>Annuler</Button>
+            <Button className="flex-1" loading={contributing} onClick={handleContribute} icon={<PiggyBank className="w-4 h-4" />}>
+              Confirmer
+            </Button>
           </div>
         </div>
       </Modal>

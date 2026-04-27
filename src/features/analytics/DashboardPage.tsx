@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { useAccountsStore } from "@/stores/useAccountsStore";
 import { formatCurrency, formatCompact } from "@/lib/utils/currency";
 import { formatDate, getMonthRange, getLast12Months } from "@/lib/utils/dates";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank, Plus, Target } from "lucide-react";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/utils/labels";
 import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Line, ComposedChart } from "recharts";
 import { parseISO, isWithinInterval } from "date-fns";
@@ -30,8 +31,18 @@ function SkeletonCard() {
 export default function DashboardPage() {
   const { transactions, loading: txLoading, fetch: fetchTx } = useTransactionsStore();
   const { accounts, loading: accLoading, fetch: fetchAcc } = useAccountsStore();
+  const [goals, setGoals] = useState<any[]>([]);
 
-  useEffect(() => { fetchTx(); fetchAcc(); }, [fetchTx, fetchAcc]);
+  useEffect(() => { 
+    fetchTx(); 
+    fetchAcc(); 
+    loadGoals();
+  }, [fetchTx, fetchAcc]);
+
+  const loadGoals = async () => {
+    const { data } = await supabase.from("goals").select("*").order("current_amount", { ascending: false }).limit(3);
+    setGoals(data || []);
+  };
 
   const { start, end } = getMonthRange();
 
@@ -45,8 +56,18 @@ export default function DashboardPage() {
 
   const income = useMemo(() => monthTx.filter((t) => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0), [monthTx]);
   const expenses = useMemo(() => monthTx.filter((t) => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0), [monthTx]);
-  const balance = income - expenses;
-  const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0;
+  const cashflow = income - expenses;
+  const savingsRate = income > 0 ? (cashflow / income) * 100 : 0;
+
+  const totalBalance = useMemo(() => {
+    // Current balance is initial_balance + sum of all transactions for that account
+    return accounts.reduce((total, acc) => {
+      const accTx = transactions.filter(t => t.account_id === acc.id);
+      const inc = accTx.filter(t => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
+      const exp = accTx.filter(t => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
+      return total + Number(acc.initial_balance || 0) + inc - exp;
+    }, 0);
+  }, [accounts, transactions]);
 
   // Chart data — last 12 months
   const chartData = useMemo(() => {
@@ -81,12 +102,22 @@ export default function DashboardPage() {
           Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
         ) : (
           <>
+            <StatCard label="Disponible" value={formatCurrency(totalBalance)} icon={Wallet} color="bg-brand-500/10 text-brand-400" />
             <StatCard label="Revenus" value={formatCurrency(income)} icon={ArrowUpRight} color="bg-emerald-500/10 text-emerald-400" />
             <StatCard label="Dépenses" value={formatCurrency(expenses)} icon={ArrowDownRight} color="bg-rose-500/10 text-rose-400" />
-            <StatCard label="Solde net" value={formatCurrency(balance)} icon={balance >= 0 ? TrendingUp : TrendingDown} color={balance >= 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"} />
-            <StatCard label="Taux d'épargne" value={`${savingsRate.toFixed(1)}%`} icon={PiggyBank} color="bg-brand-500/10 text-brand-400" sub={savingsRate >= 20 ? "✨ Excellent" : savingsRate >= 10 ? "Correct" : "À améliorer"} />
+            <StatCard label="Cash-flow" value={formatCurrency(cashflow)} icon={cashflow >= 0 ? TrendingUp : TrendingDown} color={cashflow >= 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"} sub={`${savingsRate.toFixed(0)}% épargné`} />
           </>
         )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <button className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-surface-3 rounded-xl text-sm font-medium hover:bg-surface-2 transition-all">
+          <Plus className="w-4 h-4 text-emerald-400" /> Nouvelle dépense
+        </button>
+        <button className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-surface-3 rounded-xl text-sm font-medium hover:bg-surface-2 transition-all">
+          <Target className="w-4 h-4 text-brand-400" /> Ajouter un objectif
+        </button>
       </div>
 
       {/* Chart — Revenus vs Dépenses */}
@@ -168,6 +199,36 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Goals progress section */}
+      {goals.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-brand-400" /> Objectifs prioritaires</h2>
+            <button className="text-xs text-brand-400 hover:underline">Tout voir</button>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {goals.map((g) => {
+              const pct = g.target_amount > 0 ? (Number(g.current_amount) / Number(g.target_amount)) * 100 : 0;
+              return (
+                <div key={g.id} className="bg-surface-1 border border-surface-3 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{g.icon === "target" ? "🎯" : g.icon}</span>
+                    <span className="text-xs font-bold truncate">{g.name}</span>
+                  </div>
+                  <div className="h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                    <div className="h-full bg-brand-500 rounded-full" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: g.color }} />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-mono">
+                    <span className="text-text-primary">{formatCurrency(Number(g.current_amount))}</span>
+                    <span className="text-text-muted">{pct.toFixed(0)}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

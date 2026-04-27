@@ -15,6 +15,7 @@ const PatrimoinePage = lazy(() => import("@/features/assets/PatrimoinePage"));
 const GoalsPage = lazy(() => import("@/features/goals/GoalsPage"));
 const CategoriesPage = lazy(() => import("@/features/categories/CategoriesPage"));
 const AccountsPage = lazy(() => import("@/features/accounts/AccountsPage"));
+const SettingsPage = lazy(() => import("@/features/settings/SettingsPage"));
 
 function PageLoader() {
   return (
@@ -38,6 +39,7 @@ function AuthenticatedLayout() {
             <Route path="/objectifs" element={<GoalsPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

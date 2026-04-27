@@ -2,12 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { useAccountsStore } from "@/stores/useAccountsStore";
+import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { formatCurrency, formatCompact } from "@/lib/utils/currency";
 import { formatDate, getMonthRange, getLast12Months } from "@/lib/utils/dates";
 import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank, Plus, Target } from "lucide-react";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/utils/labels";
-import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Line, ComposedChart } from "recharts";
+import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Line, ComposedChart, PieChart, Pie, Cell } from "recharts";
 import { parseISO, isWithinInterval } from "date-fns";
+import { Modal } from "@/components/ui/Modal";
+import TransactionForm from "@/features/transactions/TransactionForm";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+
+const CATEGORY_COLORS = [
+  "#6366f1", "#10b981", "#f59e0b", "#f43f5e", "#8b5cf6", 
+  "#3b82f6", "#06b6d4", "#ec4899", "#94a3b8"
+];
 
 function StatCard({ label, value, icon: Icon, color, sub }: { label: string; value: string; icon: React.ElementType; color: string; sub?: string }) {
   return (
@@ -31,17 +41,47 @@ function SkeletonCard() {
 export default function DashboardPage() {
   const { transactions, loading: txLoading, fetch: fetchTx } = useTransactionsStore();
   const { accounts, loading: accLoading, fetch: fetchAcc } = useAccountsStore();
+  const { categories, fetch: fetchCat } = useCategoriesStore();
   const [goals, setGoals] = useState<any[]>([]);
+
+  // Modal states
+  const [txModalOpen, setTxModalOpen] = useState(false);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [savingGoal, setSavingGoal] = useState(false);
+
+  // Goal form state
+  const [gName, setGName] = useState("");
+  const [gTarget, setGTarget] = useState("");
+  const [gCurrent, setGCurrent] = useState("0");
+  const [gDeadline, setGDeadline] = useState("");
 
   useEffect(() => { 
     fetchTx(); 
     fetchAcc(); 
+    fetchCat();
     loadGoals();
-  }, [fetchTx, fetchAcc]);
+  }, [fetchTx, fetchAcc, fetchCat]);
 
   const loadGoals = async () => {
     const { data } = await supabase.from("goals").select("*").order("current_amount", { ascending: false }).limit(3);
     setGoals(data || []);
+  };
+
+  const addGoal = async () => {
+    if (!gName || !gTarget) return;
+    setSavingGoal(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("goals").insert({
+        user_id: user.id, name: gName, target_amount: parseFloat(gTarget),
+        current_amount: parseFloat(gCurrent || "0"),
+        deadline: gDeadline || null, icon: "target", color: "#6366f1",
+      });
+      await loadGoals();
+      setGoalModalOpen(false);
+      setGName(""); setGTarget(""); setGCurrent("0"); setGDeadline("");
+    }
+    setSavingGoal(false);
   };
 
   const { start, end } = getMonthRange();
@@ -68,6 +108,19 @@ export default function DashboardPage() {
       return total + Number(acc.initial_balance || 0) + inc - exp;
     }, 0);
   }, [accounts, transactions]);
+
+  // Category breakdown for current month
+  const categoryData = useMemo(() => {
+    const map = new Map<string, { name: string; value: number }>();
+    monthTx
+      .filter((t) => t.flow === "expense")
+      .forEach((t) => {
+        const catName = t.category?.name || "Autre";
+        const current = map.get(catName) || { name: catName, value: 0 };
+        map.set(catName, { name: catName, value: current.value + Number(t.amount) });
+      });
+    return Array.from(map.values()).sort((a, b) => b.value - a.value);
+  }, [monthTx]);
 
   // Chart data — last 12 months
   const chartData = useMemo(() => {
@@ -112,33 +165,105 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3">
-        <button className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-surface-3 rounded-xl text-sm font-medium hover:bg-surface-2 transition-all">
+        <button 
+          onClick={() => setTxModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-surface-3 rounded-xl text-sm font-medium hover:bg-surface-2 transition-all"
+        >
           <Plus className="w-4 h-4 text-emerald-400" /> Nouvelle dépense
         </button>
-        <button className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-surface-3 rounded-xl text-sm font-medium hover:bg-surface-2 transition-all">
+        <button 
+          onClick={() => setGoalModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-surface-3 rounded-xl text-sm font-medium hover:bg-surface-2 transition-all"
+        >
           <Target className="w-4 h-4 text-brand-400" /> Ajouter un objectif
         </button>
       </div>
 
-      {/* Chart — Revenus vs Dépenses */}
-      <div className="bg-surface-1 border border-surface-3 rounded-2xl p-6">
-        <h2 className="text-sm font-semibold mb-6">Revenus vs Dépenses — 12 derniers mois</h2>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} barCategoryGap="20%">
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-3)" />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompact(v)} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "var(--surface-2)", border: "1px solid var(--surface-4)", borderRadius: 12, fontSize: 12, color: "var(--text-primary)" }}
-                labelStyle={{ color: "var(--text-secondary)" }}
-                formatter={(v: number) => formatCurrency(v)}
-              />
-              <Bar dataKey="income" name="Revenus" fill="#34d399" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expenses" name="Dépenses" fill="#fb7185" radius={[4, 4, 0, 0]} />
-              <Line type="monotone" dataKey="net" name="Solde net" stroke="#6366f1" strokeWidth={2} dot={false} />
-            </ComposedChart>
-          </ResponsiveContainer>
+      {/* Charts section */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Main Chart — Revenus vs Dépenses */}
+        <div className="lg:col-span-2 bg-surface-1 border border-surface-3 rounded-2xl p-6">
+          <h2 className="text-sm font-semibold mb-6">Revenus vs Dépenses — 12 derniers mois</h2>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} barCategoryGap="20%">
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-3)" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompact(v)} />
+                <Tooltip
+                  contentStyle={{ 
+                    backgroundColor: "var(--surface-1)", 
+                    border: "1px solid var(--surface-3)", 
+                    borderRadius: "12px", 
+                    fontSize: "12px", 
+                    color: "var(--text-primary)",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" 
+                  }}
+                  itemStyle={{ color: "var(--text-primary)" }}
+                  labelStyle={{ color: "var(--text-muted)", fontWeight: "bold", marginBottom: "4px" }}
+                  formatter={(v: number) => formatCurrency(v)}
+                />
+                <Bar dataKey="income" name="Revenus" fill="#34d399" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" name="Dépenses" fill="#fb7185" radius={[4, 4, 0, 0]} />
+                <Line type="monotone" dataKey="net" name="Solde net" stroke="#6366f1" strokeWidth={2} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Category breakdown Chart */}
+        <div className="bg-surface-1 border border-surface-3 rounded-2xl p-6">
+          <h2 className="text-sm font-semibold mb-6">Dépenses par catégorie</h2>
+          {categoryData.length > 0 ? (
+            <div className="space-y-6">
+              <div className="h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      innerRadius={45}
+                      outerRadius={70}
+                      paddingAngle={5}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {categoryData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(v: number) => formatCurrency(v)}
+                      contentStyle={{ 
+                        backgroundColor: "var(--surface-1)", 
+                        border: "1px solid var(--surface-3)", 
+                        borderRadius: "12px", 
+                        fontSize: "12px",
+                        color: "var(--text-primary)",
+                        boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)"
+                      }}
+                      itemStyle={{ color: "var(--text-primary)" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
+                {categoryData.slice(0, 5).map((d, i) => (
+                  <div key={d.name} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 truncate">
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
+                      <span className="text-[11px] font-medium truncate">{d.name}</span>
+                    </div>
+                    <span className="text-[11px] font-mono text-text-muted">{((d.value / expenses) * 100).toFixed(0)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="h-64 flex flex-col items-center justify-center text-text-muted text-xs text-center space-y-2">
+              <PieChart className="w-8 h-8 opacity-20" />
+              <p>Pas encore assez de données <br/> de dépenses ce mois-ci.</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -229,6 +354,32 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Modals */}
+      <Modal isOpen={txModalOpen} onClose={() => setTxModalOpen(false)} title="Nouvelle transaction">
+        <TransactionForm 
+          onClose={() => {
+            setTxModalOpen(false);
+            fetchTx();
+            fetchAcc();
+          }} 
+          accounts={accounts} 
+          categories={categories} 
+        />
+      </Modal>
+
+      <Modal isOpen={goalModalOpen} onClose={() => setGoalModalOpen(false)} title="Nouvel objectif" size="sm">
+        <div className="space-y-4">
+          <Input label="Nom" value={gName} onChange={(e) => setGName(e.target.value)} placeholder="Vacances, Apport immobilier..." />
+          <Input label="Montant cible" type="number" step="0.01" value={gTarget} onChange={(e) => setGTarget(e.target.value)} placeholder="10000" />
+          <Input label="Montant actuel" type="number" step="0.01" value={gCurrent} onChange={(e) => setGCurrent(e.target.value)} />
+          <Input label="Date limite (optionnel)" type="date" value={gDeadline} onChange={(e) => setGDeadline(e.target.value)} />
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setGoalModalOpen(false)}>Annuler</Button>
+            <Button className="flex-1" loading={savingGoal} onClick={addGoal}>Créer</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

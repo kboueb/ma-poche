@@ -5,7 +5,7 @@ import { daysUntil, formatDate } from "@/lib/utils/dates";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
-import { Plus, Target, Clock, CheckCircle2, AlertCircle, PiggyBank, History } from "lucide-react";
+import { Plus, Target, Clock, CheckCircle2, AlertCircle, PiggyBank } from "lucide-react";
 import type { Goal } from "@/types";
 
 function GoalStatus({ goal, onContribute }: { goal: Goal, onContribute: (goal: Goal) => void }) {

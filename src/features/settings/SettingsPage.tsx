@@ -2,9 +2,8 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { User, Shield, Download, Trash2, Bell, Globe, Moon, Sun } from "lucide-react";
+import { User, Shield, Download, Trash2, Globe, Moon, Sun } from "lucide-react";
 import { useThemeStore } from "@/stores/useThemeStore";
 
 export default function SettingsPage() {

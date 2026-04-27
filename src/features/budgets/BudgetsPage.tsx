@@ -8,14 +8,22 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, AlertTriangle, Trash2 } from "lucide-react";
-import { parseISO, isWithinInterval } from "date-fns";
+import { Plus, AlertTriangle, Trash2, TrendingUp } from "lucide-react";
+import { parseISO, isWithinInterval, getDate, getDaysInMonth } from "date-fns";
 
 function BudgetGauge({ spent, budget, label, color, alert, onRemove }: { spent: number; budget: number; label: string; color: string; alert: number; onRemove: () => void }) {
   const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
   const isOverBudget = pct >= 100;
   const isWarning = pct >= alert;
   const barColor = isOverBudget ? "bg-rose-500" : isWarning ? "bg-amber-500" : "bg-emerald-500";
+
+  // Prediction logic
+  const today = new Date();
+  const dayOfMonth = getDate(today);
+  const daysInMonth = getDaysInMonth(today);
+  const projected = dayOfMonth > 0 ? (spent / dayOfMonth) * daysInMonth : spent;
+  const isProjectedOver = projected > budget && budget > 0;
+  const projectionPct = budget > 0 ? (projected / budget) * 100 : 0;
 
   return (
     <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5 space-y-3 relative group">
@@ -41,6 +49,18 @@ function BudgetGauge({ spent, budget, label, color, alert, onRemove }: { spent: 
         <span className="text-text-muted">/ {formatCurrency(budget)}</span>
       </div>
       <p className="text-[11px] text-text-muted">{pct.toFixed(0)}% utilisé — reste {formatCurrency(Math.max(budget - spent, 0))}</p>
+      
+      {/* Prediction indicator */}
+      {budget > 0 && !isOverBudget && (
+        <div className={`mt-2 p-2 rounded-lg text-[10px] flex items-center gap-2 ${isProjectedOver ? "bg-rose-500/10 text-rose-400" : "bg-emerald-500/10 text-emerald-400"}`}>
+          {isProjectedOver ? <AlertTriangle className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+          <span>
+            {isProjectedOver 
+              ? `Projection : ${projectionPct.toFixed(0)}% (Dépassement probable)` 
+              : `Sur la bonne voie pour finir à ${projectionPct.toFixed(0)}%`}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

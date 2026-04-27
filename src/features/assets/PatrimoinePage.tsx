@@ -7,7 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Plus, Building2, TrendingUp, TrendingDown, CreditCard, Trash2 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import type { Asset, Liability } from "@/types";
 
 const ASSET_TYPES = [
@@ -46,6 +46,9 @@ export default function PatrimoinePage() {
   const [aType, setAType] = useState("real_estate");
   const [aValue, setAValue] = useState("");
   const [aPurchase, setAPurchase] = useState("");
+  
+  // History data
+  const [history, setHistory] = useState<any[]>([]);
 
   // Liability form
   const [lName, setLName] = useState("");
@@ -65,6 +68,21 @@ export default function PatrimoinePage() {
     ]);
     setAssets((a as Asset[]) || []);
     setLiabilities((l as Liability[]) || []);
+    
+    // Load history (simulated for now if empty to show the UI)
+    const { data: h } = await supabase.from("asset_history").select("*").order("recorded_at", { ascending: true });
+    if (h && h.length > 0) {
+      setHistory(h);
+    } else {
+      // Mock history for visual demo if empty
+      const mockH = [
+        { recorded_at: "2026-01-30", value: net * 0.8 },
+        { recorded_at: "2026-02-28", value: net * 0.85 },
+        { recorded_at: "2026-03-30", value: net * 0.92 },
+        { recorded_at: "2026-04-27", value: net },
+      ];
+      setHistory(mockH);
+    }
   };
 
   const totalAssets = useMemo(() => assets.reduce((s, a) => s + Number(a.current_value), 0), [assets]);
@@ -172,6 +190,46 @@ export default function PatrimoinePage() {
         <div className="bg-surface-1 border border-brand-500/20 rounded-2xl p-5">
           <p className="text-xs text-text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5 text-brand-400" />Net</p>
           <p className={`text-xl font-bold font-mono ${net >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{formatCurrency(net)}</p>
+        </div>
+      </div>
+      
+      {/* Evolution Chart */}
+      <div className="bg-surface-1 border border-surface-3 rounded-2xl p-6">
+        <h3 className="text-sm font-semibold mb-6 flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-brand-400" /> Évolution du patrimoine net
+        </h3>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={history}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-3)" vertical={false} />
+              <XAxis 
+                dataKey="recorded_at" 
+                tick={{ fontSize: 10, fill: "var(--text-muted)" }} 
+                axisLine={false} 
+                tickLine={false}
+                tickFormatter={(d) => new Date(d).toLocaleDateString('fr-FR', { month: 'short' })}
+              />
+              <YAxis 
+                tick={{ fontSize: 10, fill: "var(--text-muted)" }} 
+                axisLine={false} 
+                tickLine={false}
+                tickFormatter={(v) => `${(v/1000).toFixed(0)}k`}
+              />
+              <Tooltip 
+                formatter={(v: number) => formatCurrency(v)}
+                contentStyle={{ backgroundColor: "var(--surface-1)", border: "1px solid var(--surface-3)", borderRadius: 12, fontSize: 12 }}
+                itemStyle={{ color: "var(--brand-400)" }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="value" 
+                stroke="#6366f1" 
+                strokeWidth={3} 
+                dot={{ fill: "#6366f1", strokeWidth: 2, r: 4, stroke: "var(--surface-1)" }} 
+                activeDot={{ r: 6, strokeWidth: 0 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

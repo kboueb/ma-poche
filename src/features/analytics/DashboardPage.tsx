@@ -302,10 +302,13 @@ export default function DashboardPage() {
             )}
             {accounts.map((acc) => {
               // Calculate balance from transactions
-              const accTx = transactions.filter((t) => t.account_id === acc.id);
-              const accIncome = accTx.filter((t) => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
-              const accExpenses = accTx.filter((t) => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
-              const accBalance = accIncome - accExpenses;
+              const outTx = transactions.filter((t) => t.account_id === acc.id);
+              const inTx = transactions.filter((t) => t.transfer_to_account_id === acc.id);
+              const accIncome = outTx.filter((t) => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
+              const accExpenses = outTx.filter((t) => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
+              const transferOut = outTx.filter((t) => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
+              const transferIn = inTx.filter((t) => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
+              const accBalance = Number(acc.initial_balance || 0) + accIncome - accExpenses - transferOut + transferIn;
               return (
                 <div key={acc.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-2 transition-colors">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${acc.color}20`, color: acc.color }}>

@@ -133,10 +133,16 @@ export default function GoalsPage() {
   const getAccountBalance = (accountId: string) => {
     const acc = accounts.find(a => a.id === accountId);
     if (!acc) return 0;
-    const accTx = transactions.filter(t => t.account_id === accountId);
-    const inc = accTx.filter(t => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
-    const exp = accTx.filter(t => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
-    return Number(acc.initial_balance || 0) + inc - exp;
+    
+    const outTx = transactions.filter(t => t.account_id === accountId);
+    const inTx = transactions.filter(t => t.transfer_to_account_id === accountId);
+    
+    const inc = outTx.filter(t => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
+    const exp = outTx.filter(t => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
+    const transferOut = outTx.filter(t => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
+    const transferIn = inTx.filter(t => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
+    
+    return Number(acc.initial_balance || 0) + inc - exp - transferOut + transferIn;
   };
 
   const loadGoals = async () => {

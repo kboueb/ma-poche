@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Mail, Lock, ArrowRight, ChevronRight } from "lucide-react";
+import { Mail, Lock, ArrowRight, ChevronRight, Eye, EyeOff } from "lucide-react";
 
 // ─── Illustration components ───────────────────────────────────────────────
 
@@ -46,8 +46,8 @@ function IllustrationGoals() {
       <circle cx="140" cy="110" r="30" stroke="#f59e0b" strokeWidth="8" />
       <circle cx="140" cy="110" r="12" fill="#d97706" />
       {/* Arrow */}
-      <line x1="40" y1="40" x2="132" y2="103" stroke="#ef4444" strokeWidth="4" strokeLinecap="round" />
-      <polygon points="132,96 140,110 124,106" fill="#ef4444" />
+      <line x1="40" y1="40" x2="132" y2="103" stroke="#ee9a0d" strokeWidth="4" strokeLinecap="round" />
+      <polygon points="132,96 140,110 124,106" fill="#ee9a0d" />
       {/* Sparks */}
       <circle cx="80" cy="60" r="4" fill="#f59e0b" opacity="0.7">
         <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.5s" repeatCount="indefinite" />
@@ -130,13 +130,14 @@ const SLIDES = [
 
 // ─── Auth Form ─────────────────────────────────────────────────────────────
 
-function AuthForm({ onBack }: { onBack: () => void }) {
+function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initialMode?: "login" | "register" }) {
   const { login, register } = useAuthStore();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(initialMode === "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,7 +158,7 @@ function AuthForm({ onBack }: { onBack: () => void }) {
       </button>
 
       <div className="text-center mb-8">
-        <img src="/logo.png" alt="maPoche" className="w-16 h-16 object-contain mx-auto mb-3 drop-shadow" />
+        {/* <img src="/logo.png" alt="maPoche" className="w-20 h-20 object-contain mx-auto mb-3 drop-shadow-lg" /> */}
         <h2 className="text-2xl font-bold">
           {isLogin ? "Content de te revoir 👋" : "Rejoins maPoche 🚀"}
         </h2>
@@ -173,9 +174,25 @@ function AuthForm({ onBack }: { onBack: () => void }) {
           icon={<Mail className="w-4 h-4" />} required
         />
         <Input
-          type="password" label="Mot de passe" placeholder="••••••••"
-          value={password} onChange={(e) => setPassword(e.target.value)}
-          icon={<Lock className="w-4 h-4" />} required minLength={6}
+          type={showPassword ? "text" : "password"}
+          label="Mot de passe"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          icon={<Lock className="w-4 h-4" />}
+          suffix={
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="hover:text-text-primary transition-colors p-0.5"
+              tabIndex={-1}
+              aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          }
+          required
+          minLength={6}
         />
         {error && (
           <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-medium text-center">
@@ -201,7 +218,7 @@ function AuthForm({ onBack }: { onBack: () => void }) {
 
 export default function LoginPage() {
   const [slideIndex, setSlideIndex] = useState(0);
-  const [showAuth, setShowAuth] = useState(false);
+  const [showAuth, setShowAuth] = useState<"login" | "register" | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const autoRef = useRef<ReturnType<typeof setTimeout>>();
@@ -223,7 +240,7 @@ export default function LoginPage() {
     goTo(idx, "next");
   }, [slideIndex, goTo]);
 
-  // Auto-advance
+  // Auto-advance — stop when auth is open
   useEffect(() => {
     if (showAuth) return;
     autoRef.current = setTimeout(next, 4000);
@@ -309,46 +326,58 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right / auth panel ── */}
-      <div className="relative flex flex-col items-center justify-center p-8 md:p-16 md:w-[420px] bg-surface-1 border-t md:border-t-0 md:border-l border-surface-3">
-        {/* Logo in auth panel */}
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 md:static md:translate-x-0 mb-0 md:mb-8">
-          <img src="/logo.png" alt="maPoche" className="w-12 h-12 object-contain drop-shadow md:hidden" />
+      <div className="relative flex flex-col items-center justify-center p-8 md:p-14 md:w-[500px] bg-surface-1 border-t md:border-t-0 md:border-l border-surface-3">
+        {/* Logo mobile top */}
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 md:hidden">
+          <img src="/logo.png" alt="maPoche" className="w-14 h-14 object-contain drop-shadow" />
         </div>
 
         <div className="w-full max-w-sm">
           {showAuth ? (
-            <AuthForm onBack={() => setShowAuth(false)} />
+            <AuthForm onBack={() => setShowAuth(null)} initialMode={showAuth === "register" ? "register" : "login"} />
           ) : (
-            <div className="text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <img src="/logo.png" alt="maPoche" className="w-20 h-20 object-contain mx-auto drop-shadow-lg hidden md:block" />
+          <div className="text-center space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {/* Logo large — desktop */}
+              {/* <img
+                src="/logo.png"
+                alt="maPoche"
+                className="w-28 h-28 object-contain mx-auto hidden md:block"
+                style={{ filter: "drop-shadow(0 8px 24px rgba(16,185,129,0.35))" }}
+              /> */}
 
               <div>
-                <h2 className="text-2xl font-extrabold tracking-tight">
+                <h2 className="text-3xl font-extrabold tracking-tight leading-tight">
                   Bienvenue sur{" "}
-                  <span style={{ color: "#ef4444" }}>ma</span>
-                  <span style={{ color: "#16a34a" }}>Poche</span>
+                  <span style={{ color: "#ee9a0d" }}>ma</span>
+                  <span
+                    style={{
+                      background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}
+                  >Poche</span>
                 </h2>
-                <p className="text-text-muted text-sm mt-2">
-                  Votre gestionnaire de finances personnel.
+                <p className="text-text-muted text-sm mt-2 leading-relaxed">
+                  Votre gestionnaire de finances personnel,<br/>simple et puissant.
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 w-full">
                 <button
-                  onClick={() => setShowAuth(true)}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl font-bold text-white text-sm shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={() => setShowAuth("register")}
+                  className="w-full flex items-center justify-center gap-2 py-4 px-6 rounded-2xl font-bold text-white text-base shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
                   style={{
-                    background: `linear-gradient(135deg, ${slide.accent} 0%, ${slide.accent}cc 100%)`,
-                    boxShadow: `0 8px 24px ${slide.accent}40`,
+                    background: `linear-gradient(135deg, ${slide.accent} 0%, ${slide.accent}bb 100%)`,
+                    boxShadow: `0 8px 28px ${slide.accent}45`,
                   }}
                 >
                   Commencer gratuitement
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-5 h-5" />
                 </button>
 
                 <button
-                  onClick={() => setShowAuth(true)}
-                  className="w-full py-3 px-6 rounded-2xl font-medium text-sm text-text-secondary hover:text-text-primary border border-surface-3 hover:border-surface-4 transition-all hover:bg-surface-2"
+                  onClick={() => setShowAuth("login")}
+                  className="w-full py-3.5 px-6 rounded-2xl font-semibold text-sm text-text-secondary hover:text-text-primary border border-surface-3 hover:border-surface-4 transition-all hover:bg-surface-2"
                 >
                   J'ai déjà un compte
                 </button>

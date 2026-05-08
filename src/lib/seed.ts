@@ -5,7 +5,7 @@ const DEFAULT_CATEGORIES = [
   { name: "Logement", icon: "🏠", color: "#6366f1", flow: "expense" },
   { name: "Alimentation", icon: "🛒", color: "#10b981", flow: "expense" },
   { name: "Transport", icon: "🚗", color: "#3b82f6", flow: "expense" },
-  { name: "Santé", icon: "💊", color: "#ef4444", flow: "expense" },
+  { name: "Santé", icon: "💊", color: "#ee9a0d", flow: "expense" },
   { name: "Loisirs", icon: "🎮", color: "#f59e0b", flow: "expense" },
   { name: "Shopping", icon: "🛍️", color: "#ec4899", flow: "expense" },
   { name: "Restaurants", icon: "🍽️", color: "#f97316", flow: "expense" },

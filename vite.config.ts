@@ -26,12 +26,19 @@ export default defineConfig({
       workbox: {
         runtimeCaching: [
           {
+            // API Supabase : toujours réseau en priorité, cache en fallback offline
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,
-            handler: "StaleWhileRevalidate",
+            handler: "NetworkFirst",
             options: {
               cacheName: "supabase-api",
-              expiration: { maxEntries: 200, maxAgeSeconds: 86400 },
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 200, maxAgeSeconds: 300 }, // 5 min max en cache
             },
+          },
+          {
+            // Auth Supabase : toujours réseau
+            urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/.*/i,
+            handler: "NetworkOnly",
           },
         ],
       },

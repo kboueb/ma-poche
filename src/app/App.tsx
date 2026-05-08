@@ -7,6 +7,7 @@ import { GuidedTour } from "@/components/layout/GuidedTour";
 import { SplashScreen } from "@/components/ui/SplashScreen";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { Logo } from "@/components/ui/Logo";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import LoginPage from "./LoginPage";
 
 // Lazy-loaded pages
@@ -28,6 +29,9 @@ function PageLoader() {
 }
 
 function AuthenticatedLayout() {
+  // Auto-refresh data when PWA comes back to foreground
+  useRefreshOnFocus();
+
   return (
     <div className="min-h-screen flex">
       <GuidedTour />

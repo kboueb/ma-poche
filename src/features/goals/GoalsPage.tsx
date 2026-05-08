@@ -5,14 +5,18 @@ import { daysUntil, formatDate } from "@/lib/utils/dates";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
-import { Plus, Target, Clock, CheckCircle2, AlertCircle, PiggyBank } from "lucide-react";
+import { Select } from "@/components/ui/Select";
+import { Plus, Target, Clock, CheckCircle2, AlertCircle, PiggyBank, ArrowRightLeft, Building2, Edit2 } from "lucide-react";
 import type { Goal } from "@/types";
+import { useAccountsStore } from "@/stores/useAccountsStore";
+import { useTransactionsStore } from "@/stores/useTransactionsStore";
 
-function GoalStatus({ goal, onContribute }: { goal: Goal, onContribute: (goal: Goal) => void }) {
-  const pct = goal.target_amount > 0 ? (Number(goal.current_amount) / Number(goal.target_amount)) * 100 : 0;
+function GoalStatus({ goal, onContribute, onConvert, onEdit, accountBalance }: { goal: Goal, onContribute: (goal: Goal) => void, onConvert: (goal: Goal) => void, onEdit: (goal: Goal) => void, accountBalance?: number }) {
+  const currentAmount = goal.linked_account_id && accountBalance !== undefined ? accountBalance : Number(goal.current_amount);
+  const pct = goal.target_amount > 0 ? (currentAmount / Number(goal.target_amount)) * 100 : 0;
   const days = goal.deadline ? daysUntil(goal.deadline) : null;
   const monthsLeft = days !== null ? Math.max(Math.ceil(days / 30), 1) : null;
-  const monthlyNeeded = monthsLeft ? (Number(goal.target_amount) - Number(goal.current_amount)) / monthsLeft : null;
+  const monthlyNeeded = monthsLeft ? (Number(goal.target_amount) - currentAmount) / monthsLeft : null;
 
   const isReached = pct >= 100;
   const isLate = days !== null && days < 0 && !isReached;
@@ -34,11 +38,16 @@ function GoalStatus({ goal, onContribute }: { goal: Goal, onContribute: (goal: G
             )}
           </div>
         </div>
-        {isReached ? (
-          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-        ) : isLate ? (
-          <AlertCircle className="w-5 h-5 text-rose-400" />
-        ) : null}
+        <div className="flex gap-2">
+          <button onClick={() => onEdit(goal)} className="p-1.5 text-text-muted hover:text-brand-400 hover:bg-surface-2 rounded-lg transition-colors">
+            <Edit2 className="w-4 h-4" />
+          </button>
+          {isReached ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-1" />
+          ) : isLate ? (
+            <AlertCircle className="w-5 h-5 text-rose-400 mt-1" />
+          ) : null}
+        </div>
       </div>
 
       {/* Progress bar */}
@@ -50,7 +59,7 @@ function GoalStatus({ goal, onContribute }: { goal: Goal, onContribute: (goal: G
           />
         </div>
         <div className="flex justify-between text-xs">
-          <span className="font-mono font-bold">{formatCurrency(Number(goal.current_amount))}</span>
+          <span className="font-mono font-bold">{formatCurrency(currentAmount)}</span>
           <span className="text-text-muted font-mono">{formatCurrency(Number(goal.target_amount))}</span>
         </div>
         <p className="text-[11px] text-text-muted text-center">{pct.toFixed(0)}% atteint</p>
@@ -67,15 +76,27 @@ function GoalStatus({ goal, onContribute }: { goal: Goal, onContribute: (goal: G
         ) : (
           <div className="flex-1" />
         )}
-        <Button 
-          variant="secondary" 
-          size="sm" 
-          className="h-9 px-4 rounded-xl gap-2"
-          onClick={() => onContribute(goal)}
-        >
-          <PiggyBank className="w-4 h-4" />
-          Verser
-        </Button>
+        {isReached ? (
+          <Button 
+            className="h-9 px-4 rounded-xl gap-2 bg-emerald-500 hover:bg-emerald-600 text-white"
+            onClick={() => onConvert(goal)}
+          >
+            <Building2 className="w-4 h-4" />
+            Convertir en Actif
+          </Button>
+        ) : !goal.linked_account_id ? (
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className="h-9 px-4 rounded-xl gap-2"
+            onClick={() => onContribute(goal)}
+          >
+            <PiggyBank className="w-4 h-4" />
+            Verser
+          </Button>
+        ) : (
+          <p className="text-xs text-text-muted flex items-center gap-1"><ArrowRightLeft className="w-3 h-3"/> Automatique</p>
+        )}
       </div>
     </div>
   );
@@ -83,13 +104,17 @@ function GoalStatus({ goal, onContribute }: { goal: Goal, onContribute: (goal: G
 
 export default function GoalsPage() {
   const [goals, setGoals] = useState<Goal[]>([]);
+  const { accounts, fetch: fetchAcc } = useAccountsStore();
+  const { transactions, fetch: fetchTx } = useTransactionsStore();
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
   const [current, setCurrent] = useState("0");
   const [deadline, setDeadline] = useState("");
+  const [linkedAccountId, setLinkedAccountId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   
   // Contribution modal
   const [contributionOpen, setContributionOpen] = useState(false);
@@ -97,7 +122,22 @@ export default function GoalsPage() {
   const [contributionAmount, setContributionAmount] = useState("");
   const [contributing, setContributing] = useState(false);
 
-  useEffect(() => { loadGoals(); }, []);
+  // Convert modal
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [assetName, setAssetName] = useState("");
+  const [assetType, setAssetType] = useState("real_estate");
+  const [converting, setConverting] = useState(false);
+
+  useEffect(() => { loadGoals(); fetchAcc(); fetchTx(); }, [fetchAcc, fetchTx]);
+
+  const getAccountBalance = (accountId: string) => {
+    const acc = accounts.find(a => a.id === accountId);
+    if (!acc) return 0;
+    const accTx = transactions.filter(t => t.account_id === accountId);
+    const inc = accTx.filter(t => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
+    const exp = accTx.filter(t => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
+    return Number(acc.initial_balance || 0) + inc - exp;
+  };
 
   const loadGoals = async () => {
     const { data } = await supabase.from("goals").select("*").order("created_at");
@@ -105,20 +145,46 @@ export default function GoalsPage() {
     setLoading(false);
   };
 
-  const addGoal = async () => {
+  const saveGoal = async () => {
     if (!name || !target) return;
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from("goals").insert({
-        user_id: user.id, name, target_amount: parseFloat(target),
-        current_amount: parseFloat(current || "0"),
-        deadline: deadline || null, icon: "target", color: "#10b981",
-      });
+      const payload = {
+        name, 
+        target_amount: parseFloat(target),
+        current_amount: linkedAccountId ? 0 : parseFloat(current || "0"),
+        deadline: deadline || null, 
+        linked_account_id: linkedAccountId || null,
+        icon: "target", 
+        color: "#10b981",
+      };
+
+      if (editingGoal) {
+        await supabase.from("goals").update(payload).eq("id", editingGoal.id);
+      } else {
+        await supabase.from("goals").insert({ ...payload, user_id: user.id });
+      }
       await loadGoals();
     }
-    setSaving(false); setFormOpen(false);
-    setName(""); setTarget(""); setCurrent("0"); setDeadline("");
+    closeForm();
+  };
+
+  const openEdit = (goal: Goal) => {
+    setEditingGoal(goal);
+    setName(goal.name);
+    setTarget(goal.target_amount.toString());
+    setCurrent(goal.current_amount.toString());
+    setDeadline(goal.deadline || "");
+    setLinkedAccountId(goal.linked_account_id || "");
+    setFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setFormOpen(false);
+    setEditingGoal(null);
+    setName(""); setTarget(""); setCurrent("0"); setDeadline(""); setLinkedAccountId("");
+    setSaving(false);
   };
 
   const handleContribute = async () => {
@@ -145,8 +211,39 @@ export default function GoalsPage() {
     setContributionOpen(true);
   };
 
+  const openConvert = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setAssetName(goal.name);
+    setConvertOpen(true);
+  };
+
+  const handleConvert = async () => {
+    if (!selectedGoal || !assetName) return;
+    setConverting(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      // Create asset
+      await supabase.from("assets").insert({
+        user_id: user.id,
+        name: assetName,
+        type: assetType,
+        current_value: selectedGoal.target_amount,
+        purchase_price: selectedGoal.target_amount,
+        purchase_date: new Date().toISOString().split('T')[0]
+      });
+
+      // Optionally, we could create an expense if it was linked to an account to empty it,
+      // but let's keep it simple: just delete the goal since it's achieved and converted
+      await supabase.from("goals").delete().eq("id", selectedGoal.id);
+
+      await loadGoals();
+      setConvertOpen(false);
+    }
+    setConverting(false);
+  };
+
   const totalTarget = goals.reduce((s, g) => s + Number(g.target_amount), 0);
-  const totalCurrent = goals.reduce((s, g) => s + Number(g.current_amount), 0);
+  const totalCurrent = goals.reduce((s, g) => s + (g.linked_account_id ? getAccountBalance(g.linked_account_id) : Number(g.current_amount)), 0);
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
@@ -188,20 +285,40 @@ export default function GoalsPage() {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
-          {goals.map((g) => <GoalStatus key={g.id} goal={g} onContribute={openContribution} />)}
+          {goals.map((g) => (
+            <GoalStatus 
+              key={g.id} 
+              goal={g} 
+              onContribute={openContribution} 
+              onConvert={openConvert}
+              onEdit={openEdit}
+              accountBalance={g.linked_account_id ? getAccountBalance(g.linked_account_id) : undefined}
+            />
+          ))}
         </div>
       )}
 
-      {/* Add modal */}
-      <Modal isOpen={formOpen} onClose={() => setFormOpen(false)} title="Nouvel objectif" size="sm">
+      {/* Add/Edit modal */}
+      <Modal isOpen={formOpen} onClose={closeForm} title={editingGoal ? "Modifier l'objectif" : "Nouvel objectif"} size="sm">
         <div className="space-y-4">
           <Input label="Nom" value={name} onChange={(e) => setName(e.target.value)} placeholder="Vacances, Apport immobilier..." />
           <Input label="Montant cible" type="number" step="0.01" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="10000" />
-          <Input label="Montant actuel" type="number" step="0.01" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          
+          <Select 
+            label="Lier à un compte (Optionnel)" 
+            options={[{ value: "", label: "Aucun (mise à jour manuelle)" }, ...accounts.map(a => ({ value: a.id, label: a.name }))]}
+            value={linkedAccountId}
+            onChange={(e) => setLinkedAccountId(e.target.value)}
+          />
+
+          {!linkedAccountId && (
+            <Input label="Montant actuel de départ" type="number" step="0.01" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          )}
+
           <Input label="Date limite (optionnel)" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           <div className="flex gap-3 pt-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setFormOpen(false)}>Annuler</Button>
-            <Button className="flex-1" loading={saving} onClick={addGoal}>Créer</Button>
+            <Button variant="secondary" className="flex-1" onClick={closeForm}>Annuler</Button>
+            <Button className="flex-1" loading={saving} onClick={saveGoal}>{editingGoal ? "Enregistrer" : "Créer"}</Button>
           </div>
         </div>
       </Modal>
@@ -233,6 +350,44 @@ export default function GoalsPage() {
             <Button variant="secondary" className="flex-1" onClick={() => setContributionOpen(false)}>Annuler</Button>
             <Button className="flex-1" loading={contributing} onClick={handleContribute} icon={<PiggyBank className="w-4 h-4" />}>
               Confirmer
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Convert to Asset Modal */}
+      <Modal 
+        isOpen={convertOpen} 
+        onClose={() => setConvertOpen(false)} 
+        title="Convertir en Actif Patrimonial"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-text-muted">Félicitations pour cet objectif atteint ! Vous pouvez maintenant le transformer en actif dans votre patrimoine.</p>
+          
+          <Input 
+            label="Nom de l'actif" 
+            value={assetName} 
+            onChange={(e) => setAssetName(e.target.value)} 
+          />
+          
+          <Select
+            label="Type d'actif"
+            options={[
+              { value: "real_estate", label: "🏡 Immobilier" },
+              { value: "vehicle", label: "🚗 Véhicule" },
+              { value: "stock", label: "📈 Actions / Bourse" },
+              { value: "savings_account", label: "🏦 Compte bloqué" },
+              { value: "other", label: "📦 Autre" },
+            ]}
+            value={assetType}
+            onChange={(e) => setAssetType(e.target.value)}
+          />
+          
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setConvertOpen(false)}>Annuler</Button>
+            <Button className="flex-1 bg-emerald-500 hover:bg-emerald-600" loading={converting} onClick={handleConvert} icon={<Building2 className="w-4 h-4" />}>
+              Créer l'actif
             </Button>
           </div>
         </div>

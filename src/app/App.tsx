@@ -1,9 +1,10 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { GuidedTour } from "@/components/layout/GuidedTour";
+import { SplashScreen } from "@/components/ui/SplashScreen";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { Logo } from "@/components/ui/Logo";
 import LoginPage from "./LoginPage";
@@ -54,6 +55,8 @@ function AuthenticatedLayout() {
 export default function App() {
   const { user, loading, init } = useAuthStore();
   const theme = useThemeStore((s) => s.theme);
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => { init(); }, [init]);
 
@@ -66,26 +69,33 @@ export default function App() {
     }
   }, [theme]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-surface-0 flex items-center justify-center animate-in fade-in duration-700">
-        <div className="flex flex-col items-center gap-6">
-          <Logo size="lg" showTagline className="animate-pulse" />
-          <div className="w-32 h-1 bg-surface-2 rounded-full overflow-hidden relative">
-            <div className="absolute inset-0 bg-brand-500 animate-progress origin-left" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleSplashDone = useCallback(() => {
+    setSplashDone(true);
+    // Small delay so the fade-out animation completes
+    setTimeout(() => setShowSplash(false), 100);
+  }, []);
+
+  // Show splash during initial auth check or for at least the splash duration
+  const isReady = splashDone && !loading;
 
   return (
-    <BrowserRouter>
-      {user ? <AuthenticatedLayout /> : (
-        <Routes>
-          <Route path="*" element={<LoginPage />} />
-        </Routes>
-      )}
-    </BrowserRouter>
+    <>
+      {showSplash && <SplashScreen onDone={handleSplashDone} />}
+
+      {/* Main app — renders underneath, visible once splash is gone */}
+      <div
+        className={`transition-opacity duration-500 ${
+          isReady ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <BrowserRouter>
+          {user ? <AuthenticatedLayout /> : (
+            <Routes>
+              <Route path="*" element={<LoginPage />} />
+            </Routes>
+          )}
+        </BrowserRouter>
+      </div>
+    </>
   );
 }

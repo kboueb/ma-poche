@@ -3,14 +3,17 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
-import { User, Shield, Download, Trash2, Globe, Moon, Sun } from "lucide-react";
+import { User, Shield, Download, Trash2, Globe, Moon, Sun, CheckCircle2 } from "lucide-react";
 import { useThemeStore } from "@/stores/useThemeStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 
 export default function SettingsPage() {
   const { user, logout } = useAuthStore();
   const { transactions, fetch: fetchTx } = useTransactionsStore();
   const { theme, toggle: toggleTheme } = useThemeStore();
+  const { currency, language, setCurrency, setLanguage } = useSettingsStore();
   const [exporting, setExporting] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     fetchTx();
@@ -57,6 +60,12 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveSetting = (setter: (v: string) => void, val: string) => {
+    setter(val);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
   return (
     <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-8">
       <div>
@@ -83,9 +92,12 @@ export default function SettingsPage() {
 
       {/* Préférences Section */}
       <section className="space-y-4">
-        <div className="flex items-center gap-2 px-1">
-          <Globe className="w-4 h-4 text-brand-400" />
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">Préférences</h2>
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-brand-400" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">Préférences</h2>
+          </div>
+          {saved && <span className="text-xs text-emerald-400 flex items-center gap-1 animate-in fade-in"><CheckCircle2 className="w-3.5 h-3.5"/> Enregistré</span>}
         </div>
         <div className="bg-surface-1 border border-surface-3 rounded-2xl p-6 space-y-6">
           <div className="grid sm:grid-cols-2 gap-6">
@@ -96,8 +108,8 @@ export default function SettingsPage() {
                 { value: "EUR", label: "Euro (€)" },
                 { value: "USD", label: "Dollar ($)" }
               ]} 
-              value="XOF"
-              onChange={() => {}}
+              value={currency}
+              onChange={(e) => handleSaveSetting(setCurrency, e.target.value)}
             />
             <Select 
               label="Langue" 
@@ -105,8 +117,8 @@ export default function SettingsPage() {
                 { value: "fr", label: "Français" },
                 { value: "en", label: "English" }
               ]} 
-              value="fr"
-              onChange={() => {}}
+              value={language}
+              onChange={(e) => handleSaveSetting(setLanguage, e.target.value)}
             />
           </div>
           

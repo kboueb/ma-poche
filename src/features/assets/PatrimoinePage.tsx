@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAccountsStore } from "@/stores/useAccountsStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 import { formatCurrency, formatPercent, convertToBase } from "@/lib/utils/currency";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -35,6 +36,7 @@ const COLORS: Record<string, string> = {
 
 export default function PatrimoinePage() {
   const { accounts, fetch: fetchAcc } = useAccountsStore();
+  const globalCurrency = useSettingsStore((s) => s.currency);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
   const [assetOpen, setAssetOpen] = useState(false);
@@ -85,8 +87,8 @@ export default function PatrimoinePage() {
     }
   };
 
-  const totalAssets = useMemo(() => assets.reduce((s, a) => s + convertToBase(Number(a.current_value), a.currency), 0), [assets]);
-  const totalLiab = useMemo(() => liabilities.reduce((s, l) => s + Number(l.remaining_amount), 0), [liabilities]);
+  const totalAssets = useMemo(() => assets.reduce((s, a) => s + convertToBase(Number(a.current_value), a.currency), 0), [assets, globalCurrency]);
+  const totalLiab = useMemo(() => liabilities.reduce((s, l) => s + Number(l.remaining_amount), 0), [liabilities, globalCurrency]);
   const net = totalAssets - totalLiab;
 
   const donut = useMemo(() => {
@@ -96,7 +98,7 @@ export default function PatrimoinePage() {
       name: ASSET_TYPES.find((t) => t.value === type)?.label || type,
       value, color: COLORS[type] || "#94a3b8",
     }));
-  }, [assets]);
+  }, [assets, globalCurrency]);
 
   const addAsset = async () => {
     if (!aName || !aValue) return;
@@ -279,7 +281,7 @@ export default function PatrimoinePage() {
               </div>
               <div className="text-right flex items-center gap-4">
                 <div>
-                  <p className="text-sm font-mono font-bold">{formatCurrency(Number(a.current_value), a.currency)}</p>
+                  <p className="text-sm font-mono font-bold">{formatCurrency(convertToBase(Number(a.current_value), a.currency))}</p>
                   {pv !== null && <p className={`text-[11px] font-mono ${pv >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{pv >= 0 ? "+" : ""}{pv.toFixed(1)}%</p>}
                 </div>
                 <button onClick={() => removeItem("assets", a.id)} className="p-2 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all">

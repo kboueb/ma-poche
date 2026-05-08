@@ -1,3 +1,5 @@
+import { useSettingsStore } from "@/stores/useSettingsStore";
+
 const formatters = new Map<string, Intl.NumberFormat>();
 
 function getFormatter(currency: string): Intl.NumberFormat {
@@ -29,19 +31,32 @@ const EXCHANGE_RATES: Record<string, number> = {
   GBP: 760.0,
 };
 
-export const BASE_CURRENCY = "XOF";
+export function getBaseCurrency() {
+  try {
+    return useSettingsStore.getState().currency || "XOF";
+  } catch (e) {
+    return "XOF";
+  }
+}
 
-/** Convertit un montant vers la devise de base (XOF) */
+/** Convertit un montant vers la devise principale de l'utilisateur */
 export function convertToBase(amount: number, fromCurrency: string = "XOF"): number {
-  if (fromCurrency === BASE_CURRENCY) return amount;
-  const rate = EXCHANGE_RATES[fromCurrency] || 1;
-  return amount * rate;
+  const targetCurrency = getBaseCurrency();
+  if (fromCurrency === targetCurrency) return amount;
+  
+  const fromRate = EXCHANGE_RATES[fromCurrency] || 1;
+  const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
+  
+  // fromRate is how many base units (XOF) 1 unit of fromCurrency is worth
+  // targetRate is how many base units (XOF) 1 unit of targetCurrency is worth
+  return amount * (fromRate / targetRate);
 }
 
 /** Format a number as currency string, e.g. 1 234 FCFA */
-export function formatCurrency(amount: number, currency = "XOF"): string {
-  const formatted = getFormatter(currency).format(amount);
-  return `${formatted}${CURRENCY_SUFFIX[currency] || ` ${currency}`}`;
+export function formatCurrency(amount: number, currency?: string): string {
+  const targetCurrency = currency || getBaseCurrency();
+  const formatted = getFormatter(targetCurrency).format(amount);
+  return `${formatted}${CURRENCY_SUFFIX[targetCurrency] || ` ${targetCurrency}`}`;
 }
 
 /** Format as compact, e.g. 1,2k or 1,5M */

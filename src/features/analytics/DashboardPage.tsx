@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { useAccountsStore } from "@/stores/useAccountsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 import { formatCurrency, formatCompact, convertToBase } from "@/lib/utils/currency";
 import { formatDate, getMonthRange, getLast12Months } from "@/lib/utils/dates";
 import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Plus, Target } from "lucide-react";
@@ -42,6 +43,7 @@ export default function DashboardPage() {
   const { transactions, loading: txLoading, fetch: fetchTx } = useTransactionsStore();
   const { accounts, loading: accLoading, fetch: fetchAcc } = useAccountsStore();
   const { categories, fetch: fetchCat } = useCategoriesStore();
+  const globalCurrency = useSettingsStore((s) => s.currency);
   const [goals, setGoals] = useState<any[]>([]);
 
   // Modal states
@@ -94,8 +96,8 @@ export default function DashboardPage() {
     [transactions, start, end]
   );
 
-  const income = useMemo(() => monthTx.filter((t) => t.flow === "income").reduce((s, t) => s + convertToBase(Number(t.amount), t.account?.currency), 0), [monthTx]);
-  const expenses = useMemo(() => monthTx.filter((t) => t.flow === "expense").reduce((s, t) => s + convertToBase(Number(t.amount), t.account?.currency), 0), [monthTx]);
+  const income = useMemo(() => monthTx.filter((t) => t.flow === "income").reduce((s, t) => s + convertToBase(Number(t.amount), t.account?.currency), 0), [monthTx, globalCurrency]);
+  const expenses = useMemo(() => monthTx.filter((t) => t.flow === "expense").reduce((s, t) => s + convertToBase(Number(t.amount), t.account?.currency), 0), [monthTx, globalCurrency]);
   const cashflow = income - expenses;
   const savingsRate = income > 0 ? (cashflow / income) * 100 : 0;
 
@@ -112,7 +114,7 @@ export default function DashboardPage() {
       const accBalance = Number(acc.initial_balance || 0) + inc - exp - transferOut + transferIn;
       return total + convertToBase(accBalance, acc.currency);
     }, 0);
-  }, [accounts, transactions]);
+  }, [accounts, transactions, globalCurrency]);
 
   // Category breakdown for current month
   const categoryData = useMemo(() => {
@@ -125,7 +127,7 @@ export default function DashboardPage() {
         map.set(catName, { name: catName, value: current.value + convertToBase(Number(t.amount), t.account?.currency) });
       });
     return Array.from(map.values()).sort((a, b) => b.value - a.value);
-  }, [monthTx]);
+  }, [monthTx, globalCurrency]);
 
   // Chart data — last 12 months
   const chartData = useMemo(() => {
@@ -139,7 +141,7 @@ export default function DashboardPage() {
       const exp = txInMonth.filter((t) => t.flow === "expense").reduce((s, t) => s + convertToBase(Number(t.amount), t.account?.currency), 0);
       return { label, income: inc, expenses: exp, net: inc - exp };
     });
-  }, [transactions]);
+  }, [transactions, globalCurrency]);
 
   // Recent transactions
   const recent = transactions.slice(0, 8);
@@ -291,7 +293,7 @@ export default function DashboardPage() {
                   <p className="text-[11px] text-text-muted">{formatDate(t.date, "d MMM")} · {t.account?.name}</p>
                 </div>
                 <p className={`text-sm font-mono font-bold ${t.flow === "income" ? "text-emerald-400" : "text-rose-400"}`}>
-                  {t.flow === "income" ? "+" : "-"}{formatCurrency(Number(t.amount), t.account?.currency)}
+                  {t.flow === "income" ? "+" : "-"}{formatCurrency(convertToBase(Number(t.amount), t.account?.currency))}
                 </p>
               </div>
             ))}
@@ -324,7 +326,7 @@ export default function DashboardPage() {
                     <p className="text-[11px] text-text-muted capitalize">{ACCOUNT_TYPE_LABELS[acc.type] || acc.type} {acc.institution && `· ${acc.institution}`}</p>
                   </div>
                   <p className={`text-sm font-mono font-bold ${accBalance >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                    {formatCurrency(accBalance, acc.currency)}
+                    {formatCurrency(convertToBase(accBalance, acc.currency))}
                   </p>
                 </div>
               );

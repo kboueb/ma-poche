@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { useAccountsStore } from "@/stores/useAccountsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
-import { formatCurrency } from "@/lib/utils/currency";
+import { formatCurrency, convertToBase } from "@/lib/utils/currency";
 import { formatRelative } from "@/lib/utils/dates";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -156,7 +156,7 @@ export default function TransactionsPage() {
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
                       <p className={`text-sm font-mono font-bold ${t.flow === "income" ? "text-emerald-400" : t.flow === "expense" ? "text-rose-400" : "text-brand-400"}`}>
-                        {t.flow === "income" ? "+" : t.flow === "expense" ? "-" : ""}{formatCurrency(Number(t.amount), t.account?.currency)}
+                        {t.flow === "income" ? "+" : t.flow === "expense" ? "-" : ""}{formatCurrency(convertToBase(Number(t.amount), t.account?.currency))}
                       </p>
                       <button 
                         className="edit-btn p-2 text-text-muted hover:text-brand-400 opacity-0 group-hover:opacity-100 transition-opacity"

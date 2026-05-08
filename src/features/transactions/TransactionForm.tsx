@@ -43,6 +43,9 @@ export default function TransactionForm({ onClose, accounts, categories, initial
     (c) => c.flow === "both" || (c.flow as string) === (flow as string)
   );
 
+  const selectedAccount = accounts.find(a => a.id === accountId);
+  const currencySymbol = selectedAccount?.currency || "XOF";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !accountId) return;
@@ -104,7 +107,7 @@ export default function TransactionForm({ onClose, accounts, categories, initial
             autoFocus
             required
           />
-          <span className="text-lg text-text-muted font-mono">FCFA</span>
+          <span className="text-lg text-text-muted font-mono">{currencySymbol}</span>
         </div>
       </div>
 

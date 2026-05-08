@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
-import { Plus, Search, ArrowUpRight, ArrowDownRight, ArrowLeftRight, Trash2, Check, Upload } from "lucide-react";
+import { Plus, Search, ArrowUpRight, ArrowDownRight, ArrowLeftRight, Trash2, Check, Upload, Edit2 } from "lucide-react";
 import TransactionForm from "./TransactionForm";
 import TransactionImport from "./TransactionImport";
+import type { Transaction } from "@/types";
 
 const FLOW_OPTIONS = [
   { value: "", label: "Tous les types" },
@@ -41,6 +42,7 @@ export default function TransactionsPage() {
   const [flowFilter, setFlowFilter] = useState("");
   const [accountFilter, setAccountFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   useEffect(() => { fetch(); fetchAcc(); fetchCat(); }, [fetch, fetchAcc, fetchCat]);
 
@@ -136,8 +138,11 @@ export default function TransactionsPage() {
                 {txs.map((t) => (
                   <div
                     key={t.id}
-                    className={`flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors cursor-pointer ${selected.has(t.id) ? "bg-brand-500/5" : ""}`}
-                    onClick={() => toggleSelect(t.id)}
+                    className={`flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors cursor-pointer group ${selected.has(t.id) ? "bg-brand-500/5" : ""}`}
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest("button.edit-btn")) return;
+                      toggleSelect(t.id);
+                    }}
                   >
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${FLOW_COLORS[t.flow]}`}>
                       {FLOW_ICON[t.flow]}
@@ -149,9 +154,20 @@ export default function TransactionsPage() {
                         {t.is_reviewed && <span className="ml-1 text-emerald-400">✓</span>}
                       </p>
                     </div>
-                    <p className={`text-sm font-mono font-bold shrink-0 ${t.flow === "income" ? "text-emerald-400" : t.flow === "expense" ? "text-rose-400" : "text-brand-400"}`}>
-                      {t.flow === "income" ? "+" : t.flow === "expense" ? "-" : ""}{formatCurrency(Number(t.amount))}
-                    </p>
+                    <div className="flex items-center gap-4 shrink-0">
+                      <p className={`text-sm font-mono font-bold ${t.flow === "income" ? "text-emerald-400" : t.flow === "expense" ? "text-rose-400" : "text-brand-400"}`}>
+                        {t.flow === "income" ? "+" : t.flow === "expense" ? "-" : ""}{formatCurrency(Number(t.amount))}
+                      </p>
+                      <button 
+                        className="edit-btn p-2 text-text-muted hover:text-brand-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTx(t);
+                        }}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -160,9 +176,18 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* Add Transaction Modal */}
-      <Modal isOpen={formOpen} onClose={() => setFormOpen(false)} title="Nouvelle transaction">
-        <TransactionForm onClose={() => setFormOpen(false)} accounts={accounts} categories={categories} />
+      {/* Add/Edit Transaction Modal */}
+      <Modal isOpen={formOpen || !!editingTx} onClose={() => { setFormOpen(false); setEditingTx(null); }} title={editingTx ? "Modifier la transaction" : "Nouvelle transaction"}>
+        <TransactionForm 
+          onClose={() => { 
+            setFormOpen(false); 
+            if (editingTx) fetch(); // refresh list to get updated related fields
+            setEditingTx(null); 
+          }} 
+          accounts={accounts} 
+          categories={categories} 
+          initialData={editingTx || undefined}
+        />
       </Modal>
 
       {/* Import CSV Modal */}

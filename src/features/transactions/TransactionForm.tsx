@@ -3,13 +3,14 @@ import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import type { Account, Category, FlowType } from "@/types";
+import type { Account, Category, FlowType, Transaction } from "@/types";
 import { format } from "date-fns";
 
 interface Props {
   onClose: () => void;
   accounts: Account[];
   categories: Category[];
+  initialData?: Transaction;
 }
 
 const FLOW_OPTIONS = [
@@ -18,16 +19,16 @@ const FLOW_OPTIONS = [
   { value: "transfer", label: "🔄 Virement" },
 ];
 
-export default function TransactionForm({ onClose, accounts, categories }: Props) {
-  const { add } = useTransactionsStore();
-  const [flow, setFlow] = useState<FlowType>("expense");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [accountId, setAccountId] = useState(accounts[0]?.id || "");
-  const [transferToId, setTransferToId] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [description, setDescription] = useState("");
-  const [note, setNote] = useState("");
+export default function TransactionForm({ onClose, accounts, categories, initialData }: Props) {
+  const { add, update } = useTransactionsStore();
+  const [flow, setFlow] = useState<FlowType>(initialData?.flow || "expense");
+  const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
+  const [date, setDate] = useState(initialData?.date || format(new Date(), "yyyy-MM-dd"));
+  const [accountId, setAccountId] = useState(initialData?.account_id || accounts[0]?.id || "");
+  const [transferToId, setTransferToId] = useState(initialData?.transfer_to_account_id || "");
+  const [categoryId, setCategoryId] = useState(initialData?.category_id || "");
+  const [description, setDescription] = useState(initialData?.description || "");
+  const [note, setNote] = useState(initialData?.note || "");
   const [loading, setLoading] = useState(false);
 
   // Auto-select first account if not set
@@ -45,7 +46,8 @@ export default function TransactionForm({ onClose, accounts, categories }: Props
     e.preventDefault();
     if (!amount || !accountId) return;
     setLoading(true);
-    await add({
+    
+    const payload = {
       amount: parseFloat(amount),
       flow,
       date,
@@ -54,11 +56,19 @@ export default function TransactionForm({ onClose, accounts, categories }: Props
       transfer_to_account_id: flow === "transfer" ? transferToId : null,
       description: description || null,
       note: note || null,
-      tags: [],
-      recurrence_rule: null,
-      recurrence_parent_id: null,
-      is_reviewed: false,
-    });
+    };
+
+    if (initialData) {
+      await update(initialData.id, payload);
+    } else {
+      await add({
+        ...payload,
+        tags: [],
+        recurrence_rule: null,
+        recurrence_parent_id: null,
+        is_reviewed: false,
+      });
+    }
     setLoading(false);
     onClose();
   };

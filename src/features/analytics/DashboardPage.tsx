@@ -6,10 +6,10 @@ import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { formatCurrency, formatCompact, convertToBase } from "@/lib/utils/currency";
 import { formatDate, getMonthRange, getLast12Months } from "@/lib/utils/dates";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Plus, Target } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Plus, Target, ChevronLeft, ChevronRight } from "lucide-react";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/utils/labels";
 import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Line, ComposedChart, PieChart, Pie, Cell } from "recharts";
-import { parseISO, isWithinInterval } from "date-fns";
+import { parseISO, isWithinInterval, addMonths, subMonths } from "date-fns";
 import { Modal } from "@/components/ui/Modal";
 import TransactionForm from "@/features/transactions/TransactionForm";
 import { Input } from "@/components/ui/Input";
@@ -44,6 +44,7 @@ export default function DashboardPage() {
   const { accounts, loading: accLoading, fetch: fetchAcc } = useAccountsStore();
   const { categories, fetch: fetchCat } = useCategoriesStore();
   const globalCurrency = useSettingsStore((s) => s.currency);
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [goals, setGoals] = useState<any[]>([]);
 
   // Modal states
@@ -86,7 +87,7 @@ export default function DashboardPage() {
     setSavingGoal(false);
   };
 
-  const { start, end } = getMonthRange();
+  const { start, end } = useMemo(() => getMonthRange(currentDate), [currentDate]);
 
   const monthTx = useMemo(() =>
     transactions.filter((t) => {
@@ -151,9 +152,29 @@ export default function DashboardPage() {
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Tableau de bord</h1>
-        <p className="text-text-muted text-sm mt-1">{formatDate(new Date(), "MMMM yyyy")}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Tableau de bord</h1>
+          <p className="text-text-muted text-sm mt-1">Vos finances en un coup d'œil</p>
+        </div>
+        
+        <div className="flex items-center gap-2 bg-surface-1 border border-surface-3 rounded-xl p-1 shrink-0 w-fit">
+          <button 
+            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+            className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <span className="text-sm font-semibold min-w-[110px] text-center capitalize">
+            {formatDate(currentDate, "MMMM yyyy")}
+          </span>
+          <button 
+            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+            className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Stat cards */}

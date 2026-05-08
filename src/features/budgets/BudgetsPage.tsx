@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, AlertTriangle, Trash2, TrendingUp } from "lucide-react";
-import { parseISO, isWithinInterval, getDate, getDaysInMonth } from "date-fns";
+import { Plus, AlertTriangle, Trash2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { parseISO, isWithinInterval, getDate, getDaysInMonth, addMonths, subMonths } from "date-fns";
 
 function BudgetGauge({ spent, budget, label, color, alert, onRemove }: { spent: number; budget: number; label: string; color: string; alert: number; onRemove: () => void }) {
   const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
@@ -69,6 +69,7 @@ export default function BudgetsPage() {
   const { transactions, fetch: fetchTx } = useTransactionsStore();
   const { categories, fetch: fetchCat } = useCategoriesStore();
   const { budgets, loading, fetch: fetchBudgets, add, remove } = useBudgetsStore();
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [formOpen, setFormOpen] = useState(false);
 
   // Form state
@@ -78,7 +79,7 @@ export default function BudgetsPage() {
 
   useEffect(() => { fetchTx(); fetchCat(); fetchBudgets(); }, [fetchTx, fetchCat, fetchBudgets]);
 
-  const { start, end } = getMonthRange();
+  const { start, end } = useMemo(() => getMonthRange(currentDate), [currentDate]);
 
   const budgetData = useMemo(() => {
     return budgets.map((b) => {
@@ -117,8 +118,27 @@ export default function BudgetsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Budgets</h1>
-          <p className="text-text-muted text-sm mt-1">{formatDate(new Date(), "MMMM yyyy")}</p>
+          <p className="text-text-muted text-sm mt-1">Gérez vos limites de dépenses</p>
         </div>
+        
+        <div className="flex items-center gap-2 bg-surface-1 border border-surface-3 rounded-xl p-1 shrink-0 w-fit">
+          <button 
+            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+            className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <span className="text-sm font-semibold min-w-[110px] text-center capitalize">
+            {formatDate(currentDate, "MMMM yyyy")}
+          </span>
+          <button 
+            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+            className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+
         <Button icon={<Plus className="w-4 h-4" />} onClick={() => setFormOpen(true)}>Nouveau budget</Button>
       </div>
 

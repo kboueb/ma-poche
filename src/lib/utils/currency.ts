@@ -22,6 +22,22 @@ const CURRENCY_SUFFIX: Record<string, string> = {
   GBP: " £",
 };
 
+const EXCHANGE_RATES: Record<string, number> = {
+  XOF: 1,
+  EUR: 655.957,
+  USD: 605.0, // Taux approximatif (à rendre dynamique plus tard si besoin)
+  GBP: 760.0,
+};
+
+export const BASE_CURRENCY = "XOF";
+
+/** Convertit un montant vers la devise de base (XOF) */
+export function convertToBase(amount: number, fromCurrency: string = "XOF"): number {
+  if (fromCurrency === BASE_CURRENCY) return amount;
+  const rate = EXCHANGE_RATES[fromCurrency] || 1;
+  return amount * rate;
+}
+
 /** Format a number as currency string, e.g. 1 234 FCFA */
 export function formatCurrency(amount: number, currency = "XOF"): string {
   const formatted = getFormatter(currency).format(amount);

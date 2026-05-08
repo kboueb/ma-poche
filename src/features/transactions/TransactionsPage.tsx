@@ -156,7 +156,7 @@ export default function TransactionsPage() {
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
                       <p className={`text-sm font-mono font-bold ${t.flow === "income" ? "text-emerald-400" : t.flow === "expense" ? "text-rose-400" : "text-brand-400"}`}>
-                        {t.flow === "income" ? "+" : t.flow === "expense" ? "-" : ""}{formatCurrency(Number(t.amount))}
+                        {t.flow === "income" ? "+" : t.flow === "expense" ? "-" : ""}{formatCurrency(Number(t.amount), t.account?.currency)}
                       </p>
                       <button 
                         className="edit-btn p-2 text-text-muted hover:text-brand-400 opacity-0 group-hover:opacity-100 transition-opacity"

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
 import type { Transaction } from "@/types";
+import { processRecurrences } from "@/lib/utils/recurrence";
 
 interface TransactionsState {
   transactions: Transaction[];
@@ -30,7 +31,20 @@ export const useTransactionsStore = create<TransactionsState>((set) => ({
     if (filters?.flow) q = q.eq("flow", filters.flow);
 
     const { data } = await q;
-    set({ transactions: (data as Transaction[]) || [], loading: false });
+    const txs = (data as Transaction[]) || [];
+    
+    // Check and generate any missing recurrences
+    if (!filters?.from && !filters?.to) {
+      const added = await processRecurrences(txs);
+      if (added) {
+        // If we added new ones, fetch again without calling processRecurrences
+        const { data: newData } = await q;
+        set({ transactions: (newData as Transaction[]) || [], loading: false });
+        return;
+      }
+    }
+
+    set({ transactions: txs, loading: false });
   },
 
   add: async (t) => {

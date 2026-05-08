@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { useAccountsStore } from "@/stores/useAccountsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
-import { formatCurrency, formatCompact } from "@/lib/utils/currency";
+import { formatCurrency, formatCompact, convertToBase } from "@/lib/utils/currency";
 import { formatDate, getMonthRange, getLast12Months } from "@/lib/utils/dates";
 import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Plus, Target } from "lucide-react";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/utils/labels";
@@ -94,18 +94,23 @@ export default function DashboardPage() {
     [transactions, start, end]
   );
 
-  const income = useMemo(() => monthTx.filter((t) => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0), [monthTx]);
-  const expenses = useMemo(() => monthTx.filter((t) => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0), [monthTx]);
+  const income = useMemo(() => monthTx.filter((t) => t.flow === "income").reduce((s, t) => s + convertToBase(Number(t.amount), t.account?.currency), 0), [monthTx]);
+  const expenses = useMemo(() => monthTx.filter((t) => t.flow === "expense").reduce((s, t) => s + convertToBase(Number(t.amount), t.account?.currency), 0), [monthTx]);
   const cashflow = income - expenses;
   const savingsRate = income > 0 ? (cashflow / income) * 100 : 0;
 
   const totalBalance = useMemo(() => {
-    // Current balance is initial_balance + sum of all transactions for that account
     return accounts.reduce((total, acc) => {
-      const accTx = transactions.filter(t => t.account_id === acc.id);
-      const inc = accTx.filter(t => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
-      const exp = accTx.filter(t => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
-      return total + Number(acc.initial_balance || 0) + inc - exp;
+      const outTx = transactions.filter(t => t.account_id === acc.id);
+      const inTx = transactions.filter(t => t.transfer_to_account_id === acc.id);
+      
+      const inc = outTx.filter(t => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
+      const exp = outTx.filter(t => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
+      const transferOut = outTx.filter(t => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
+      const transferIn = inTx.filter(t => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
+      
+      const accBalance = Number(acc.initial_balance || 0) + inc - exp - transferOut + transferIn;
+      return total + convertToBase(accBalance, acc.currency);
     }, 0);
   }, [accounts, transactions]);
 
@@ -117,7 +122,7 @@ export default function DashboardPage() {
       .forEach((t) => {
         const catName = t.category?.name || "Autre";
         const current = map.get(catName) || { name: catName, value: 0 };
-        map.set(catName, { name: catName, value: current.value + Number(t.amount) });
+        map.set(catName, { name: catName, value: current.value + convertToBase(Number(t.amount), t.account?.currency) });
       });
     return Array.from(map.values()).sort((a, b) => b.value - a.value);
   }, [monthTx]);
@@ -130,8 +135,8 @@ export default function DashboardPage() {
         const d = parseISO(t.date);
         return isWithinInterval(d, { start: ms, end: me });
       });
-      const inc = txInMonth.filter((t) => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
-      const exp = txInMonth.filter((t) => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
+      const inc = txInMonth.filter((t) => t.flow === "income").reduce((s, t) => s + convertToBase(Number(t.amount), t.account?.currency), 0);
+      const exp = txInMonth.filter((t) => t.flow === "expense").reduce((s, t) => s + convertToBase(Number(t.amount), t.account?.currency), 0);
       return { label, income: inc, expenses: exp, net: inc - exp };
     });
   }, [transactions]);
@@ -286,7 +291,7 @@ export default function DashboardPage() {
                   <p className="text-[11px] text-text-muted">{formatDate(t.date, "d MMM")} · {t.account?.name}</p>
                 </div>
                 <p className={`text-sm font-mono font-bold ${t.flow === "income" ? "text-emerald-400" : "text-rose-400"}`}>
-                  {t.flow === "income" ? "+" : "-"}{formatCurrency(Number(t.amount))}
+                  {t.flow === "income" ? "+" : "-"}{formatCurrency(Number(t.amount), t.account?.currency)}
                 </p>
               </div>
             ))}

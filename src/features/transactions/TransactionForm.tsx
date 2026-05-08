@@ -29,6 +29,7 @@ export default function TransactionForm({ onClose, accounts, categories, initial
   const [categoryId, setCategoryId] = useState(initialData?.category_id || "");
   const [description, setDescription] = useState(initialData?.description || "");
   const [note, setNote] = useState(initialData?.note || "");
+  const [recurrence, setRecurrence] = useState(initialData?.recurrence_rule || "");
   const [loading, setLoading] = useState(false);
 
   // Auto-select first account if not set
@@ -64,7 +65,7 @@ export default function TransactionForm({ onClose, accounts, categories, initial
       await add({
         ...payload,
         tags: [],
-        recurrence_rule: null,
+        recurrence_rule: recurrence || null,
         recurrence_parent_id: null,
         is_reviewed: false,
       });
@@ -116,6 +117,18 @@ export default function TransactionForm({ onClose, accounts, categories, initial
       )}
 
       <Select label="Catégorie" options={filteredCategories.map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` }))} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} placeholder="Optionnel" />
+
+      <Select 
+        label="Récurrence" 
+        options={[
+          { value: "", label: "Une seule fois" },
+          { value: "weekly", label: "Chaque semaine" },
+          { value: "monthly", label: "Chaque mois" },
+          { value: "yearly", label: "Chaque année" },
+        ]} 
+        value={recurrence} 
+        onChange={(e) => setRecurrence(e.target.value)} 
+      />
 
       <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex: Courses Carrefour" />
 

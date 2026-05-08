@@ -1,11 +1,12 @@
 import { useState, useCallback, useMemo } from "react";
 import { parseCSVText, applyMapping, dedup, type ParsedRow, type CSVMapping } from "@/lib/parsers/csvParser";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
+import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { formatCurrency } from "@/lib/utils/currency";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
-import { Upload, FileSpreadsheet, Check } from "lucide-react";
+import { Upload, FileSpreadsheet, Check, Sparkles } from "lucide-react";
 import type { Account } from "@/types";
 
 interface Props {
@@ -18,6 +19,7 @@ type Step = "upload" | "mapping" | "preview" | "done";
 
 export default function TransactionImport({ isOpen, onClose, accounts }: Props) {
   const { transactions, add } = useTransactionsStore();
+  const { categories } = useCategoriesStore();
   const [step, setStep] = useState<Step>("upload");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
@@ -69,10 +71,48 @@ export default function TransactionImport({ isOpen, onClose, accounts }: Props) 
 
   const colOptions = useMemo(() => headers.map((h, i) => ({ value: String(i), label: `${i + 1}. ${h}` })), [headers]);
 
+  const guessCategory = (description: string): string | null => {
+    const desc = description.toLowerCase();
+    
+    // Mots-clés pour catégorisation "intelligente"
+    const keywords: Record<string, string[]> = {
+      "alimentation": ["auchan", "carrefour", "casino", "super u", "leclerc", "boulangerie", "resto", "restaurant", "mcdo", "uber eats", "deliveroo", "monoprix", "lidl"],
+      "transport": ["total", "shell", "sncf", "uber", "bolt", "ratp", "navigo", "station service", "essence"],
+      "logement": ["loyer", "edf", "engie", "eau", "assurance", "internet", "orange", "free", "bouygues", "sfr"],
+      "loisirs": ["netflix", "spotify", "cinema", "fnac", "amazon", "steam", "playstation", "apple"],
+      "santé": ["pharmacie", "docteur", "medecin", "mutuelle", "hopital", "dentiste", "chu"],
+      "revenu": ["salaire", "virement", "caf", "remboursement"],
+    };
+
+    // Cherche via le dictionnaire de mots-clés
+    for (const [key, words] of Object.entries(keywords)) {
+      if (words.some(w => desc.includes(w))) {
+        const match = categories.find(c => c.name.toLowerCase().includes(key));
+        if (match) return match.id;
+      }
+    }
+
+    // Cherche directement via le nom de la catégorie
+    for (const cat of categories) {
+      if (cat.name.length > 3 && desc.includes(cat.name.toLowerCase())) {
+        return cat.id;
+      }
+    }
+
+    return null;
+  };
+
   const doPreview = () => {
     const mapped = applyMapping(rows, mapping);
     const deduped = dedup(mapped, transactions);
-    setParsed(deduped);
+    
+    // Attacher la catégorie devinée pour l'aperçu
+    const withCategories = deduped.map(r => ({
+      ...r,
+      guessedCategoryId: guessCategory(r.description)
+    }));
+    
+    setParsed(withCategories as any);
     setStep("preview");
   };
 
@@ -86,7 +126,7 @@ export default function TransactionImport({ isOpen, onClose, accounts }: Props) 
         flow: row.flow,
         date: row.date,
         account_id: accountId,
-        category_id: null,
+        category_id: (row as any).guessedCategoryId || null,
         transfer_to_account_id: null,
         description: row.description,
         note: null,
@@ -175,7 +215,15 @@ export default function TransactionImport({ isOpen, onClose, accounts }: Props) 
                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${r.flow === "income" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
                   {r.flow === "income" ? "+" : "-"}
                 </span>
-                <span className="flex-1 text-sm truncate">{r.description}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm truncate block">{r.description}</span>
+                  {(r as any).guessedCategoryId && (
+                    <span className="text-[10px] text-brand-400 flex items-center gap-1 mt-0.5">
+                      <Sparkles className="w-3 h-3" />
+                      {categories.find(c => c.id === (r as any).guessedCategoryId)?.name || "Catégorie suggérée"}
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs text-text-muted">{r.date}</span>
                 <span className={`text-sm font-mono font-bold ${r.flow === "income" ? "text-emerald-400" : "text-rose-400"}`}>
                   {formatCurrency(r.amount)}

@@ -245,7 +245,7 @@ function TourOverlay({
                 onClick={onNext}
                 className="flex items-center gap-1 px-4 py-1.5 text-sm bg-brand-500 hover:bg-brand-600 text-white rounded-xl transition-colors font-semibold"
               >
-                {stepIndex === total - 1 ? "Terminer 🎉" : "Suivant"}
+                {stepIndex === total - 1 ? "Terminé 🎉" : "Suivant"}
                 {stepIndex < total - 1 && <ChevronRight className="w-4 h-4" />}
               </button>
             </div>

@@ -3,6 +3,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Mail, Lock, ArrowRight, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 // ─── Illustration components ───────────────────────────────────────────────
 
@@ -157,8 +158,8 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
         ← Retour
       </button>
 
+
       <div className="text-center mb-8">
-        {/* <img src="/logo.png" alt="maPoche" className="w-20 h-20 object-contain mx-auto mb-3 drop-shadow-lg" /> */}
         <h2 className="text-2xl font-bold">
           {isLogin ? "Content de te revoir 👋" : "Rejoins maPoche 🚀"}
         </h2>
@@ -327,9 +328,9 @@ export default function LoginPage() {
 
       {/* ── Right / auth panel ── */}
       <div className="relative flex flex-col items-center justify-center p-8 md:p-14 md:w-[500px] bg-surface-1 border-t md:border-t-0 md:border-l border-surface-3">
-        {/* Logo mobile top */}
+        {/* maPoche — mobile */}
         <div className="absolute top-6 left-1/2 -translate-x-1/2 md:hidden">
-          <img src="/logo.png" alt="maPoche" className="w-14 h-14 object-contain drop-shadow" />
+          <Logo size="sm" />
         </div>
 
         <div className="w-full max-w-sm">
@@ -338,12 +339,7 @@ export default function LoginPage() {
           ) : (
           <div className="text-center space-y-7 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {/* Logo large — desktop */}
-              {/* <img
-                src="/logo.png"
-                alt="maPoche"
-                className="w-28 h-28 object-contain mx-auto hidden md:block"
-                style={{ filter: "drop-shadow(0 8px 24px rgba(16,185,129,0.35))" }}
-              /> */}
+              {/* <Logo size="lg" /> */}
 
               <div>
                 <h2 className="text-3xl font-extrabold tracking-tight leading-tight">

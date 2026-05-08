@@ -47,4 +47,17 @@ export default defineConfig({
   resolve: {
     alias: { "@": "/src" },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-charts': ['recharts'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-db': ['@supabase/supabase-js'],
+          'vendor-date': ['date-fns'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000,
+  }
 });

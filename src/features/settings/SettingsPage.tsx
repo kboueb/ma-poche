@@ -3,15 +3,19 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
-import { User, Shield, Download, Trash2, Globe, Moon, Sun, CheckCircle2 } from "lucide-react";
+import { User, Shield, Download, Trash2, Globe, Moon, Sun, CheckCircle2, Compass } from "lucide-react";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useRestartTour } from "@/components/layout/GuidedTour";
+import { useNavigate } from "react-router-dom";
 
 export default function SettingsPage() {
   const { user, logout } = useAuthStore();
   const { transactions, fetch: fetchTx } = useTransactionsStore();
   const { theme, toggle: toggleTheme } = useThemeStore();
   const { currency, language, setCurrency, setLanguage } = useSettingsStore();
+  const restartTour = useRestartTour();
+  const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -138,6 +142,21 @@ export default function SettingsPage() {
             >
               <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${theme === "dark" ? "left-7" : "left-1"}`} />
             </button>
+          </div>
+
+          <div className="flex items-center justify-between pt-4 border-t border-surface-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-surface-2 flex items-center justify-center">
+                <Compass className="w-5 h-5 text-brand-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Visite guidée</p>
+                <p className="text-[11px] text-text-muted">Relancer la présentation de l'application</p>
+              </div>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => { restartTour(); navigate("/"); }}>
+              Relancer
+            </Button>
           </div>
         </div>
       </section>

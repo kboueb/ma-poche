@@ -178,7 +178,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="tour-dashboard grid grid-cols-2 lg:grid-cols-4 gap-4">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
         ) : (
@@ -195,7 +195,7 @@ export default function DashboardPage() {
       <div className="flex flex-wrap gap-3">
         <button 
           onClick={() => setTxModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-surface-1 border border-surface-3 rounded-xl text-sm font-medium hover:bg-surface-2 transition-all"
+          className="tour-add-button flex items-center gap-2 px-4 py-2 bg-surface-1 border border-surface-3 rounded-xl text-sm font-medium hover:bg-surface-2 transition-all"
         >
           <Plus className="w-4 h-4 text-emerald-400" /> Nouvelle dépense
         </button>

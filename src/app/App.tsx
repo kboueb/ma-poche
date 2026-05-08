@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { GuidedTour } from "@/components/layout/GuidedTour";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { Logo } from "@/components/ui/Logo";
 import LoginPage from "./LoginPage";
@@ -28,6 +29,7 @@ function PageLoader() {
 function AuthenticatedLayout() {
   return (
     <div className="min-h-screen flex">
+      <GuidedTour />
       <Sidebar />
       <main className="flex-1 md:ml-64 pb-20 md:pb-0">
         <Suspense fallback={<PageLoader />}>

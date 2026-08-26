@@ -6,6 +6,7 @@ export const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   credit: "Carte de crédit",
   investment: "Investissement",
   cash: "Espèces",
+  mobile_money: "Mobile Money",
   other: "Autre",
 };
 

@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, Wallet, Landmark, CreditCard, Trash2 } from "lucide-react";
+import { Plus, Wallet, Landmark, CreditCard, Trash2, Edit2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/currency";
+import { toast } from "sonner";
+import type { Account } from "@/types";
 
 const ACCOUNT_TYPES = [
   { value: "checking", label: "🏦 Compte Courant" },
@@ -16,8 +18,9 @@ const ACCOUNT_TYPES = [
 ];
 
 export default function AccountsPage() {
-  const { accounts, loading, fetch, add, remove } = useAccountsStore();
+  const { accounts, loading, fetch, add, update, remove } = useAccountsStore();
   const [formOpen, setFormOpen] = useState(false);
+  const [editingAcc, setEditingAcc] = useState<Account | null>(null);
   
   // Form state
   const [name, setName] = useState("");
@@ -29,12 +32,16 @@ export default function AccountsPage() {
 
   useEffect(() => { fetch(); }, [fetch]);
 
+  const resetForm = () => {
+    setName(""); setType("checking"); setInstitution(""); setBalance("0"); setColor("#10b981");
+  };
+
   const handleAdd = async () => {
     if (!name) return;
     setSaving(true);
     await add({
       name,
-      type: type as any,
+      type: type as Account["type"],
       institution,
       initial_balance: parseFloat(balance),
       current_balance: parseFloat(balance),
@@ -43,9 +50,32 @@ export default function AccountsPage() {
     });
     setSaving(false);
     setFormOpen(false);
-    setName("");
-    setInstitution("");
-    setBalance("0");
+    resetForm();
+  };
+
+  const handleEdit = async () => {
+    if (!name || !editingAcc) return;
+    setSaving(true);
+    await update(editingAcc.id, {
+      name,
+      type: type as Account["type"],
+      institution,
+      color,
+    });
+    setSaving(false);
+    setFormOpen(false);
+    setEditingAcc(null);
+    resetForm();
+    toast.success("Compte mis à jour");
+  };
+
+  const openEdit = (acc: Account) => {
+    setEditingAcc(acc);
+    setName(acc.name);
+    setType(acc.type);
+    setInstitution(acc.institution || "");
+    setColor(acc.color);
+    setFormOpen(true);
   };
 
   return (
@@ -76,12 +106,17 @@ export default function AccountsPage() {
                   <p className="text-[11px] text-text-muted uppercase tracking-wider">{acc.institution || "Banque"}</p>
                 </div>
               </div>
-              <button 
-                onClick={() => { if(confirm("Supprimer ce compte ?")) remove(acc.id); }}
-                className="p-2 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => openEdit(acc)} className="p-2 text-text-muted hover:text-brand-400 opacity-0 group-hover:opacity-100 transition-all">
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => { remove(acc.id); toast.success("Compte supprimé"); }}
+                  className="p-2 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="mt-8 relative z-10">
@@ -100,7 +135,7 @@ export default function AccountsPage() {
         )}
       </div>
 
-      <Modal isOpen={formOpen} onClose={() => setFormOpen(false)} title="Nouveau compte bancaire" size="sm">
+      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); setEditingAcc(null); }} title={editingAcc ? "Modifier le compte" : "Nouveau compte bancaire"} size="sm">
         <div className="space-y-4">
           <Input label="Nom du compte" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Compte Courant, Wave..." />
           <Select label="Type de compte" options={ACCOUNT_TYPES} value={type} onChange={(e) => setType(e.target.value)} />
@@ -120,8 +155,8 @@ export default function AccountsPage() {
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setFormOpen(false)}>Annuler</Button>
-            <Button className="flex-1" loading={saving} onClick={handleAdd}>Créer</Button>
+            <Button variant="secondary" className="flex-1" onClick={() => { setFormOpen(false); setEditingAcc(null); }}>Annuler</Button>
+            <Button className="flex-1" loading={saving} onClick={editingAcc ? handleEdit : handleAdd}>{editingAcc ? "Mettre à jour" : "Créer"}</Button>
           </div>
         </div>
       </Modal>

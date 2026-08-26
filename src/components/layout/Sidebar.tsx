@@ -1,14 +1,16 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ArrowLeftRight, PieChart, Building2, Target, Settings, LogOut, Sun, Moon, Tag, Wallet } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, PieChart, Building2, Target, Settings, LogOut, Sun, Moon, Tag, Wallet, BarChart3, Repeat } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useThemeStore } from "@/stores/useThemeStore";
 
 const NAV = [
   { to: "/", icon: LayoutDashboard, label: "Tableau de bord", tourClass: "" },
   { to: "/transactions", icon: ArrowLeftRight, label: "Transactions", tourClass: "tour-nav-transactions" },
+  { to: "/recurrentes", icon: Repeat, label: "Récurrentes", tourClass: "" },
   { to: "/accounts", icon: Wallet, label: "Comptes", tourClass: "tour-nav-accounts" },
   { to: "/budgets", icon: PieChart, label: "Budgets", tourClass: "tour-nav-budgets" },
   { to: "/patrimoine", icon: Building2, label: "Patrimoine", tourClass: "tour-nav-patrimoine" },
+  { to: "/rapports", icon: BarChart3, label: "Rapports", tourClass: "" },
   { to: "/objectifs", icon: Target, label: "Objectifs", tourClass: "tour-nav-objectifs" },
   { to: "/categories", icon: Tag, label: "Catégories", tourClass: "" },
 ];

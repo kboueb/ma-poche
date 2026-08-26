@@ -3,8 +3,8 @@ import { addMonths, addWeeks, addYears, isBefore, isSameDay, parseISO, format } 
 import type { Transaction } from "@/types";
 
 export async function processRecurrences(transactions: Transaction[]): Promise<boolean> {
-  // Trouver toutes les transactions parentes (qui ont une règle de récurrence et pas de parent)
-  const parents = transactions.filter(t => t.recurrence_rule && !t.recurrence_parent_id);
+  // Trouver toutes les transactions parentes (qui ont une règle de récurrence et pas de parent, et qui sont actives)
+  const parents = transactions.filter(t => t.recurrence_rule && !t.recurrence_parent_id && t.is_active !== false);
   if (parents.length === 0) return false;
 
   const newTransactions: any[] = [];
@@ -48,6 +48,7 @@ export async function processRecurrences(transactions: Transaction[]): Promise<b
           recurrence_rule: parent.recurrence_rule,
           recurrence_parent_id: parent.id,
           is_reviewed: false,
+          is_active: true,
         });
         existingDates.add(dateStr);
       }

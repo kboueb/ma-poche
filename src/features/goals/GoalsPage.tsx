@@ -10,6 +10,7 @@ import { Plus, Target, Clock, CheckCircle2, AlertCircle, PiggyBank, ArrowRightLe
 import type { Goal } from "@/types";
 import { useAccountsStore } from "@/stores/useAccountsStore";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
+import { computeAccountBalance } from "@/lib/utils/accounts";
 
 function GoalStatus({ goal, onContribute, onConvert, onEdit, accountBalance }: { goal: Goal, onContribute: (goal: Goal) => void, onConvert: (goal: Goal) => void, onEdit: (goal: Goal) => void, accountBalance?: number }) {
   const currentAmount = goal.linked_account_id && accountBalance !== undefined ? accountBalance : Number(goal.current_amount);
@@ -133,16 +134,7 @@ export default function GoalsPage() {
   const getAccountBalance = (accountId: string) => {
     const acc = accounts.find(a => a.id === accountId);
     if (!acc) return 0;
-    
-    const outTx = transactions.filter(t => t.account_id === accountId);
-    const inTx = transactions.filter(t => t.transfer_to_account_id === accountId);
-    
-    const inc = outTx.filter(t => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
-    const exp = outTx.filter(t => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
-    const transferOut = outTx.filter(t => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
-    const transferIn = inTx.filter(t => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
-    
-    return Number(acc.initial_balance || 0) + inc - exp - transferOut + transferIn;
+    return computeAccountBalance(acc, transactions);
   };
 
   const loadGoals = async () => {

@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { supabase } from "@/lib/supabase";
+import { translateError } from "@/lib/utils/errors";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Mail, Lock, ArrowRight, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, ArrowRight, ChevronRight, Eye, EyeOff, Send, CheckCircle } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
 // ─── Illustration components ───────────────────────────────────────────────
@@ -134,6 +136,8 @@ const SLIDES = [
 function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initialMode?: "login" | "register" }) {
   const { login, register } = useAuthStore();
   const [isLogin, setIsLogin] = useState(initialMode === "login");
+  const [forgotPassword, setForgotPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -148,6 +152,81 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
     if (err) setError(err);
     setLoading(false);
   };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      setError(translateError(error.message));
+    } else {
+      setResetSent(true);
+    }
+    setLoading(false);
+  };
+
+  if (forgotPassword) {
+    return (
+      <div className="animate-in slide-in-from-bottom-4 fade-in duration-400">
+        <button
+          onClick={() => { setForgotPassword(false); setResetSent(false); setError(""); }}
+          className="mb-6 flex items-center gap-2 text-sm text-text-muted hover:text-text-primary transition-colors"
+        >
+          ← Retour
+        </button>
+
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold">
+            {resetSent ? "Email envoyé 📩" : "Mot de passe oublié ?"}
+          </h2>
+          <p className="text-text-muted text-sm mt-1">
+            {resetSent
+              ? "Vérifie ta boîte mail et clique sur le lien pour réinitialiser ton mot de passe."
+              : "Entre ton email et nous t'enverrons un lien pour créer un nouveau mot de passe."}
+          </p>
+        </div>
+
+        {resetSent ? (
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/10">
+              <CheckCircle className="w-8 h-8 text-emerald-400" />
+            </div>
+            <Button
+              onClick={() => { setForgotPassword(false); setResetSent(false); }}
+              variant="secondary"
+              className="w-full"
+              size="lg"
+            >
+              Retour à la connexion
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <Input
+              type="email"
+              label="Email"
+              placeholder="toi@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              icon={<Mail className="w-4 h-4" />}
+              required
+            />
+            {error && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-medium text-center">
+                {error}
+              </div>
+            )}
+            <Button type="submit" loading={loading} className="w-full" size="lg" icon={<Send className="w-4 h-4" />}>
+              Envoyer le lien
+            </Button>
+          </form>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in slide-in-from-bottom-4 fade-in duration-400">
@@ -204,6 +283,15 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
           {isLogin ? "Connexion" : "Créer mon compte"}
         </Button>
       </form>
+
+      {isLogin && (
+        <button
+          onClick={() => { setForgotPassword(true); setError(""); }}
+          className="w-full mt-3 text-center text-xs text-text-muted hover:text-brand-400 underline underline-offset-4 transition-colors"
+        >
+          Mot de passe oublié ?
+        </button>
+      )}
 
       <button
         onClick={() => { setIsLogin(!isLogin); setError(""); }}

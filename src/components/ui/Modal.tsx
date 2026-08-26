@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 
@@ -13,16 +13,29 @@ interface ModalProps {
 const sizes = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl" };
 
 export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape") onClose();
+  }, [onClose]);
+
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
-  }, [isOpen]);
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      document.addEventListener("keydown", handleKeyDown);
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, handleKeyDown]);
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -31,6 +44,7 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
             onClick={onClose}
           />
           <motion.div
+            ref={contentRef}
             initial={{ y: "100%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}

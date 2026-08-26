@@ -48,6 +48,7 @@ export interface Transaction {
   recurrence_rule: string | null;
   recurrence_parent_id: string | null;
   is_reviewed: boolean;
+  is_active: boolean;
   created_at: string;
   // Joined
   account?: Account;
@@ -72,14 +73,17 @@ export interface Asset {
 export interface Liability {
   id: string;
   user_id: string;
+  account_id: string | null;
   name: string;
   type: LiabilityType;
   initial_amount: number;
   remaining_amount: number;
   interest_rate: number | null;
   monthly_payment: number | null;
+  start_date: string | null;
   end_date: string | null;
   linked_asset_id: string | null;
+  notes: string | null;
   created_at: string;
 }
 
@@ -115,5 +119,15 @@ export interface AssetHistory {
   id: string;
   asset_id: string;
   value: number;
+  recorded_at: string;
+}
+
+export interface PatrimoineSnapshot {
+  id: string;
+  user_id: string;
+  total_assets: number;
+  total_liabilities: number;
+  net_worth: number;
+  account_balances: number;
   recorded_at: string;
 }

@@ -14,6 +14,10 @@ const TRANSLATIONS: Record<string, string> = {
   "Refresh Token Not Found": "Session expirée. Reconnecte-toi",
   "Token has expired or is invalid": "Session expirée. Reconnecte-toi",
   "New password should be different from the old password": "Le nouveau mot de passe doit être différent de l'ancien",
+  "Password reset token has expired": "Le lien de réinitialisation a expiré. Demande un nouveau lien",
+  "Password reset token has already been used": "Ce lien de réinitialisation a déjà été utilisé. Demande un nouveau lien",
+  "Unable to find user with this email": "Aucun compte trouvé avec cet email",
+  "For security purposes, you can only": "Pour des raisons de sécurité, réessaie dans quelques instants",
 
   // Database / RLS
   "new row violates row-level security policy": "Erreur de permission. Reconnecte-toi",

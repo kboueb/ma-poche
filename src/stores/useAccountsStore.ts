@@ -7,6 +7,7 @@ interface AccountsState {
   loading: boolean;
   fetch: () => Promise<void>;
   add: (a: Pick<Account, "name" | "type" | "institution" | "currency" | "color" | "initial_balance" | "current_balance">) => Promise<void>;
+  update: (id: string, data: Partial<Account>) => Promise<void>;
   remove: (id: string) => Promise<void>;
 }
 
@@ -25,6 +26,11 @@ export const useAccountsStore = create<AccountsState>((set) => ({
     if (!user) return;
     const { data } = await supabase.from("accounts").insert({ ...a, user_id: user.id }).select().single();
     if (data) set((s) => ({ accounts: [...s.accounts, data as Account] }));
+  },
+
+  update: async (id, data) => {
+    await supabase.from("accounts").update(data).eq("id", id);
+    set((s) => ({ accounts: s.accounts.map((a) => a.id === id ? { ...a, ...data } : a) }));
   },
 
   remove: async (id) => {

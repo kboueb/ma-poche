@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState, useCallback } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -7,8 +8,10 @@ import { GuidedTour } from "@/components/layout/GuidedTour";
 import { SplashScreen } from "@/components/ui/SplashScreen";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { Logo } from "@/components/ui/Logo";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import LoginPage from "./LoginPage";
+import ResetPasswordPage from "./ResetPasswordPage";
 
 // Lazy-loaded pages
 const DashboardPage = lazy(() => import("@/features/analytics/DashboardPage"));
@@ -19,6 +22,8 @@ const GoalsPage = lazy(() => import("@/features/goals/GoalsPage"));
 const CategoriesPage = lazy(() => import("@/features/categories/CategoriesPage"));
 const AccountsPage = lazy(() => import("@/features/accounts/AccountsPage"));
 const SettingsPage = lazy(() => import("@/features/settings/SettingsPage"));
+const ReportsPage = lazy(() => import("@/features/analytics/ReportsPage"));
+const RecurringTransactionsPage = lazy(() => import("@/features/transactions/RecurringTransactionsPage"));
 
 function PageLoader() {
   return (
@@ -43,6 +48,8 @@ function AuthenticatedLayout() {
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/budgets" element={<BudgetsPage />} />
             <Route path="/patrimoine" element={<PatrimoinePage />} />
+            <Route path="/rapports" element={<ReportsPage />} />
+            <Route path="/recurrentes" element={<RecurringTransactionsPage />} />
             <Route path="/objectifs" element={<GoalsPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
@@ -85,6 +92,7 @@ export default function App() {
   return (
     <>
       {showSplash && <SplashScreen onDone={handleSplashDone} />}
+      <Toaster position="top-center" richColors closeButton />
 
       {/* Main app — renders underneath, visible once splash is gone */}
       <div
@@ -93,11 +101,16 @@ export default function App() {
         }`}
       >
         <BrowserRouter>
-          {user ? <AuthenticatedLayout /> : (
+          <ErrorBoundary>
             <Routes>
-              <Route path="*" element={<LoginPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              {user ? (
+                <Route path="*" element={<AuthenticatedLayout />} />
+              ) : (
+                <Route path="*" element={<LoginPage />} />
+              )}
             </Routes>
-          )}
+          </ErrorBoundary>
         </BrowserRouter>
       </div>
     </>

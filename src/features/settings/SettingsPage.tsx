@@ -8,12 +8,13 @@ import { useThemeStore } from "@/stores/useThemeStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useRestartTour } from "@/components/layout/GuidedTour";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const { user, logout } = useAuthStore();
   const { transactions, fetch: fetchTx } = useTransactionsStore();
   const { theme, toggle: toggleTheme } = useThemeStore();
-  const { currency, language, setCurrency, setLanguage } = useSettingsStore();
+  const { currency, setCurrency } = useSettingsStore();
   const restartTour = useRestartTour();
   const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
@@ -27,7 +28,7 @@ export default function SettingsPage() {
     setExporting(true);
     try {
       if (transactions.length === 0) {
-        alert("Aucune transaction à exporter.");
+        toast.info("Aucune transaction à exporter");
         return;
       }
 
@@ -58,7 +59,7 @@ export default function SettingsPage() {
       document.body.removeChild(link);
     } catch (error) {
       console.error("Export error:", error);
-      alert("Erreur lors de l'exportation.");
+      toast.error("Erreur lors de l'exportation");
     } finally {
       setExporting(false);
     }
@@ -89,7 +90,7 @@ export default function SettingsPage() {
               <p className="text-xs text-text-muted uppercase font-semibold">Adresse e-mail</p>
               <p className="text-sm font-medium mt-1">{user?.email}</p>
             </div>
-            <Button variant="secondary" size="sm">Changer d'e-mail</Button>
+            <Button variant="secondary" size="sm" onClick={() => toast.info("Fonctionnalité à venir")}>Changer d'e-mail</Button>
           </div>
         </div>
       </section>
@@ -114,15 +115,6 @@ export default function SettingsPage() {
               ]} 
               value={currency}
               onChange={(e) => handleSaveSetting(setCurrency, e.target.value)}
-            />
-            <Select 
-              label="Langue" 
-              options={[
-                { value: "fr", label: "Français" },
-                { value: "en", label: "English" }
-              ]} 
-              value={language}
-              onChange={(e) => handleSaveSetting(setLanguage, e.target.value)}
             />
           </div>
           
@@ -183,7 +175,7 @@ export default function SettingsPage() {
               <p className="text-sm font-medium text-rose-400">Zone de danger</p>
               <p className="text-[11px] text-text-muted">Supprimer définitivement votre compte et toutes vos données</p>
             </div>
-            <Button variant="ghost" className="text-rose-400 hover:bg-rose-500/10" icon={<Trash2 className="w-4 h-4" />}>
+            <Button variant="ghost" className="text-rose-400 hover:bg-rose-500/10" icon={<Trash2 className="w-4 h-4" />} onClick={() => toast.info("Fonctionnalité à venir")}>
               Supprimer
             </Button>
           </div>

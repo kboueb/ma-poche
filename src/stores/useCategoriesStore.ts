@@ -7,6 +7,7 @@ interface CategoriesState {
   loading: boolean;
   fetch: () => Promise<void>;
   add: (c: Pick<Category, "name" | "icon" | "color" | "parent_id" | "flow">) => Promise<void>;
+  update: (id: string, data: Partial<Category>) => Promise<void>;
   remove: (id: string) => Promise<void>;
 }
 
@@ -25,6 +26,11 @@ export const useCategoriesStore = create<CategoriesState>((set) => ({
     if (!user) return;
     const { data } = await supabase.from("categories").insert({ ...c, user_id: user.id }).select().single();
     if (data) set((s) => ({ categories: [...s.categories, data as Category] }));
+  },
+
+  update: async (id, data) => {
+    await supabase.from("categories").update(data).eq("id", id);
+    set((s) => ({ categories: s.categories.map((c) => c.id === id ? { ...c, ...data } : c) }));
   },
 
   remove: async (id) => {

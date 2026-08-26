@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, AlertTriangle, Trash2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
-import { parseISO, isWithinInterval, getDate, getDaysInMonth, addMonths, subMonths } from "date-fns";
+import { Plus, AlertTriangle, Trash2, TrendingUp, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { parseISO, isWithinInterval, getDate, getDaysInMonth, addMonths, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { toast } from "sonner";
 
-function BudgetGauge({ spent, budget, label, color, alert, onRemove }: { spent: number; budget: number; label: string; color: string; alert: number; onRemove: () => void }) {
-  const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+function BudgetGauge({ spent, budget, label, color, alert, onRemove, rolloverAmount }: { spent: number; budget: number; label: string; color: string; alert: number; onRemove: () => void; rolloverAmount?: number }) {
+  const effectiveBudget = budget + (rolloverAmount || 0);
+  const pct = effectiveBudget > 0 ? Math.min((spent / effectiveBudget) * 100, 100) : 0;
   const isOverBudget = pct >= 100;
   const isWarning = pct >= alert;
   const barColor = isOverBudget ? "bg-rose-500" : isWarning ? "bg-amber-500" : "bg-emerald-500";
@@ -22,8 +24,8 @@ function BudgetGauge({ spent, budget, label, color, alert, onRemove }: { spent: 
   const dayOfMonth = getDate(today);
   const daysInMonth = getDaysInMonth(today);
   const projected = dayOfMonth > 0 ? (spent / dayOfMonth) * daysInMonth : spent;
-  const isProjectedOver = projected > budget && budget > 0;
-  const projectionPct = budget > 0 ? (projected / budget) * 100 : 0;
+  const isProjectedOver = projected > effectiveBudget && effectiveBudget > 0;
+  const projectionPct = effectiveBudget > 0 ? (projected / effectiveBudget) * 100 : 0;
 
   return (
     <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5 space-y-3 relative group">
@@ -31,6 +33,11 @@ function BudgetGauge({ spent, budget, label, color, alert, onRemove }: { spent: 
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
           <span className="text-sm font-semibold">{label}</span>
+          {rolloverAmount ? rolloverAmount > 0 ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+              <RefreshCw className="w-2.5 h-2.5" /> +{formatCurrency(rolloverAmount)}
+            </span>
+          ) : null : null}
         </div>
         <div className="flex items-center gap-2">
           {isWarning && <AlertTriangle className="w-4 h-4 text-amber-500" />}
@@ -46,12 +53,12 @@ function BudgetGauge({ spent, budget, label, color, alert, onRemove }: { spent: 
         <span className={`font-mono font-bold ${isOverBudget ? "text-rose-400" : "text-text-primary"}`}>
           {formatCurrency(spent)}
         </span>
-        <span className="text-text-muted">/ {formatCurrency(budget)}</span>
+        <span className="text-text-muted">/ {formatCurrency(effectiveBudget)}</span>
       </div>
-      <p className="text-[11px] text-text-muted">{pct.toFixed(0)}% utilisé — reste {formatCurrency(Math.max(budget - spent, 0))}</p>
+      <p className="text-[11px] text-text-muted">{pct.toFixed(0)}% utilisé — reste {formatCurrency(Math.max(effectiveBudget - spent, 0))}</p>
       
       {/* Prediction indicator */}
-      {budget > 0 && !isOverBudget && (
+      {effectiveBudget > 0 && !isOverBudget && (
         <div className={`mt-2 p-2 rounded-lg text-[10px] flex items-center gap-2 ${isProjectedOver ? "bg-rose-500/10 text-rose-400" : "bg-emerald-500/10 text-emerald-400"}`}>
           {isProjectedOver ? <AlertTriangle className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
           <span>
@@ -75,6 +82,7 @@ export default function BudgetsPage() {
   // Form state
   const [formCat, setFormCat] = useState("");
   const [formAmount, setFormAmount] = useState("");
+  const [formRollover, setFormRollover] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { fetchTx(); fetchCat(); fetchBudgets(); }, [fetchTx, fetchCat, fetchBudgets]);
@@ -86,9 +94,21 @@ export default function BudgetsPage() {
       const spent = transactions
         .filter((t) => t.flow === "expense" && t.category_id === b.category_id && isWithinInterval(parseISO(t.date), { start, end }))
         .reduce((s, t) => s + Number(t.amount), 0);
-      return { ...b, spent };
+
+      let rolloverAmount = 0;
+      if (b.rollover) {
+        const prevMonth = subMonths(currentDate, 1);
+        const prevStart = startOfMonth(prevMonth);
+        const prevEnd = endOfMonth(prevMonth);
+        const prevSpent = transactions
+          .filter((t) => t.flow === "expense" && t.category_id === b.category_id && isWithinInterval(parseISO(t.date), { start: prevStart, end: prevEnd }))
+          .reduce((s, t) => s + Number(t.amount), 0);
+        rolloverAmount = Math.max(Number(b.amount) - prevSpent, 0);
+      }
+
+      return { ...b, spent, rolloverAmount };
     });
-  }, [budgets, transactions, start, end]);
+  }, [budgets, transactions, start, end, currentDate]);
 
   const totalBudget = budgetData.reduce((s, b) => s + Number(b.amount), 0);
   const totalSpent = budgetData.reduce((s, b) => s + (b.spent || 0), 0);
@@ -102,13 +122,14 @@ export default function BudgetsPage() {
       period: "monthly",
       active_from: start.toISOString().slice(0, 10),
       active_to: null,
-      rollover: false,
+      rollover: formRollover,
       alert_threshold: 80,
     });
     setSaving(false);
     setFormOpen(false);
     setFormCat("");
     setFormAmount("");
+    setFormRollover(false);
   };
 
   const expenseCategories = categories.filter((c) => c.flow === "expense" || c.flow === "both");
@@ -176,7 +197,8 @@ export default function BudgetsPage() {
               label={b.category?.name || "Catégorie"} 
               color={b.category?.color || "#94a3b8"} 
               alert={b.alert_threshold}
-              onRemove={() => { if(confirm("Supprimer ce budget ?")) remove(b.id); }}
+              rolloverAmount={b.rollover ? b.rolloverAmount : 0}
+              onRemove={() => { remove(b.id); toast.success("Budget supprimé"); }}
             />
           ))}
         </div>
@@ -186,6 +208,15 @@ export default function BudgetsPage() {
         <div className="space-y-4">
           <Select label="Catégorie" options={expenseCategories.map((c) => ({ value: c.id, label: c.name }))} value={formCat} onChange={(e) => setFormCat(e.target.value)} placeholder="Choisir..." />
           <Input label="Montant mensuel" type="number" step="1" value={formAmount} onChange={(e) => setFormAmount(e.target.value)} placeholder="500" />
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div className={`w-10 h-5 rounded-full relative transition-colors ${formRollover ? "bg-brand-500" : "bg-surface-3"}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${formRollover ? "translate-x-5" : "translate-x-0.5"}`} />
+            </div>
+            <div>
+              <span className="text-sm font-medium group-hover:text-text-primary">Rollover</span>
+              <p className="text-[11px] text-text-muted">Reporter le reste non utilisé au mois suivant</p>
+            </div>
+          </label>
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" className="flex-1" onClick={() => setFormOpen(false)}>Annuler</Button>
             <Button className="flex-1" loading={saving} onClick={handleAddBudget}>Créer</Button>

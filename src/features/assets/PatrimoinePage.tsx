@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Plus, Building2, TrendingUp, TrendingDown, CreditCard, Trash2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
-import type { Asset, Liability } from "@/types";
+import type { Asset, Liability, PatrimoineSnapshot } from "@/types";
+import { toast } from "sonner";
 
 const ASSET_TYPES = [
   { value: "real_estate", label: "🏠 Immobilier" },
@@ -50,7 +51,7 @@ export default function PatrimoinePage() {
   const [aPurchase, setAPurchase] = useState("");
   
   // History data
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<PatrimoineSnapshot[]>([]);
 
   // Liability form
   const [lName, setLName] = useState("");
@@ -71,20 +72,8 @@ export default function PatrimoinePage() {
     setAssets((a as Asset[]) || []);
     setLiabilities((l as Liability[]) || []);
     
-    // Load history (simulated for now if empty to show the UI)
-    const { data: h } = await supabase.from("asset_history").select("*").order("recorded_at", { ascending: true });
-    if (h && h.length > 0) {
-      setHistory(h);
-    } else {
-      // Mock history for visual demo if empty
-      const mockH = [
-        { recorded_at: "2026-01-30", value: net * 0.8 },
-        { recorded_at: "2026-02-28", value: net * 0.85 },
-        { recorded_at: "2026-03-30", value: net * 0.92 },
-        { recorded_at: "2026-04-27", value: net },
-      ];
-      setHistory(mockH);
-    }
+    const { data: h } = await supabase.from("patrimoine_snapshots").select("*").order("recorded_at", { ascending: true });
+    setHistory((h as PatrimoineSnapshot[]) || []);
   };
 
   const totalAssets = useMemo(() => assets.reduce((s, a) => s + convertToBase(Number(a.current_value), a.currency), 0), [assets, globalCurrency]);
@@ -114,7 +103,7 @@ export default function PatrimoinePage() {
       });
       if (error) {
         console.error("Erreur actif:", error);
-        alert("Erreur lors de la création de l'actif: " + error.message);
+        toast.error("Erreur lors de la création de l'actif");
       } else {
         await loadAll();
         setAssetOpen(false); setAName(""); setAValue(""); setAPurchase("");
@@ -128,7 +117,7 @@ export default function PatrimoinePage() {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const payload: any = { 
+      const payload: Record<string, unknown> = { 
         user_id: user.id, 
         name: lName, 
         type: lType, 
@@ -138,7 +127,6 @@ export default function PatrimoinePage() {
         monthly_payment: lMonthly ? parseFloat(lMonthly) : null,
       };
 
-      // On n'ajoute account_id que si l'utilisateur a fait un choix (pour éviter l'erreur si la colonne n'existe pas encore)
       if (lAccount) {
         payload.account_id = lAccount;
       }
@@ -147,20 +135,7 @@ export default function PatrimoinePage() {
       
       if (error) {
         console.error("Erreur passif:", error);
-        // Si l'erreur est spécifiquement sur account_id, on réessaie sans
-        if (error.message.includes("account_id")) {
-          const { account_id, ...fallbackPayload } = payload;
-          const { error: retryError } = await supabase.from("liabilities").insert(fallbackPayload);
-          if (retryError) {
-            alert("Erreur: " + retryError.message);
-          } else {
-            alert("⚠️ Passif créé sans le débit auto (la colonne 'account_id' manque dans ta base Supabase).");
-            await loadAll();
-            setLiabOpen(false);
-          }
-        } else {
-          alert("Erreur: " + error.message);
-        }
+        toast.error("Erreur lors de la création du passif");
       } else {
         await loadAll();
         setLiabOpen(false); setLName(""); setLTotal(""); setLRemaining(""); setLRate(""); setLMonthly(""); setLAccount("");
@@ -170,9 +145,9 @@ export default function PatrimoinePage() {
   };
 
   const removeItem = async (table: "assets" | "liabilities", id: string) => {
-    if (!confirm("Supprimer cet élément ?")) return;
     await supabase.from(table).delete().eq("id", id);
     await loadAll();
+    toast.success("Élément supprimé");
   };
 
   return (
@@ -224,7 +199,7 @@ export default function PatrimoinePage() {
               />
               <Line 
                 type="monotone" 
-                dataKey="value" 
+                dataKey="net_worth" 
                 stroke="#6366f1" 
                 strokeWidth={3} 
                 dot={{ fill: "#6366f1", strokeWidth: 2, r: 4, stroke: "var(--surface-1)" }} 

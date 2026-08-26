@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
-import { Plus, Search, ArrowUpRight, ArrowDownRight, ArrowLeftRight, Trash2, Check, Upload, Edit2 } from "lucide-react";
+import { Plus, Search, ArrowUpRight, ArrowDownRight, ArrowLeftRight, Trash2, Check, Upload, Edit2, Repeat, Tag, X } from "lucide-react";
 import TransactionForm from "./TransactionForm";
 import TransactionImport from "./TransactionImport";
 import type { Transaction } from "@/types";
@@ -18,6 +18,12 @@ const FLOW_OPTIONS = [
   { value: "income", label: "Revenus" },
   { value: "expense", label: "Dépenses" },
   { value: "transfer", label: "Virements" },
+];
+
+const RECURRENCE_FILTER = [
+  { value: "", label: "Toutes" },
+  { value: "recurring", label: "Récurrentes" },
+  { value: "one-time", label: "Ponctuelles" },
 ];
 
 const FLOW_ICON: Record<string, React.ReactNode> = {
@@ -41,22 +47,48 @@ export default function TransactionsPage() {
   const [search, setSearch] = useState("");
   const [flowFilter, setFlowFilter] = useState("");
   const [accountFilter, setAccountFilter] = useState("");
+  const [recurrenceFilter, setRecurrenceFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   useEffect(() => { fetch(); fetchAcc(); fetchCat(); }, [fetch, fetchAcc, fetchCat]);
 
+  // Collect all unique tags from transactions
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    transactions.forEach((t) => t.tags?.forEach((tag) => tagSet.add(tag)));
+    return Array.from(tagSet).sort();
+  }, [transactions]);
+
+  // Recent descriptions for Quick-Add
+  const recentDescriptions = useMemo(() => {
+    const seen = new Set<string>();
+    const descs: string[] = [];
+    for (const t of transactions) {
+      if (t.description && !seen.has(t.description)) {
+        seen.add(t.description);
+        descs.push(t.description);
+        if (descs.length >= 8) break;
+      }
+    }
+    return descs;
+  }, [transactions]);
+
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
       if (flowFilter && t.flow !== flowFilter) return false;
       if (accountFilter && t.account_id !== accountFilter) return false;
+      if (recurrenceFilter === "recurring" && !t.recurrence_rule) return false;
+      if (recurrenceFilter === "one-time" && t.recurrence_rule) return false;
+      if (tagFilter && !t.tags?.includes(tagFilter)) return false;
       if (search) {
         const s = search.toLowerCase();
-        return (t.description?.toLowerCase().includes(s)) || (t.category?.name?.toLowerCase().includes(s));
+        return (t.description?.toLowerCase().includes(s)) || (t.category?.name?.toLowerCase().includes(s)) || (t.tags?.some((tag) => tag.toLowerCase().includes(s)));
       }
       return true;
     });
-  }, [transactions, flowFilter, accountFilter, search]);
+  }, [transactions, flowFilter, accountFilter, recurrenceFilter, tagFilter, search]);
 
   // Group by date
   const grouped = useMemo(() => {
@@ -108,7 +140,24 @@ export default function TransactionsPage() {
         </div>
         <Select options={FLOW_OPTIONS} value={flowFilter} onChange={(e) => setFlowFilter(e.target.value)} />
         <Select options={accountOptions} value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)} />
+        <Select options={RECURRENCE_FILTER} value={recurrenceFilter} onChange={(e) => setRecurrenceFilter(e.target.value)} />
       </div>
+
+      {/* Tag filter chips */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {tagFilter && (
+            <button onClick={() => setTagFilter("")} className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-brand-500/10 text-brand-400 border border-brand-500/20 rounded-lg">
+              <Tag className="w-3 h-3" /> {tagFilter} <X className="w-3 h-3" />
+            </button>
+          )}
+          {allTags.filter((t) => t !== tagFilter).slice(0, 10).map((tag) => (
+            <button key={tag} onClick={() => setTagFilter(tag)} className="px-2.5 py-1 text-[11px] font-medium bg-surface-2 hover:bg-surface-3 border border-surface-4 rounded-lg text-text-secondary transition-colors">
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Bulk actions */}
       {selected.size > 0 && (
@@ -148,11 +197,21 @@ export default function TransactionsPage() {
                       {FLOW_ICON[t.flow]}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{t.description || "—"}</p>
+                      <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                        {t.description || "—"}
+                        {t.recurrence_rule && <Repeat className="w-3 h-3 text-brand-400 shrink-0" />}
+                      </p>
                       <p className="text-[11px] text-text-muted truncate">
                         {t.category?.name || "Non catégorisé"} · {t.account?.name}
                         {t.is_reviewed && <span className="ml-1 text-emerald-400">✓</span>}
                       </p>
+                      {t.tags && t.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {t.tags.map((tag) => (
+                            <span key={tag} className="px-1.5 py-0.5 text-[9px] font-medium bg-surface-3 rounded text-text-muted">{tag}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
                       <p className={`text-sm font-mono font-bold ${t.flow === "income" ? "text-emerald-400" : t.flow === "expense" ? "text-rose-400" : "text-brand-400"}`}>
@@ -181,12 +240,13 @@ export default function TransactionsPage() {
         <TransactionForm 
           onClose={() => { 
             setFormOpen(false); 
-            if (editingTx) fetch(); // refresh list to get updated related fields
+            if (editingTx) fetch();
             setEditingTx(null); 
           }} 
           accounts={accounts} 
           categories={categories} 
           initialData={editingTx || undefined}
+          recentDescriptions={recentDescriptions}
         />
       </Modal>
 

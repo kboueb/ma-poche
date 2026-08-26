@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 import type { Transaction } from "@/types";
 import { processRecurrences } from "@/lib/utils/recurrence";
 
@@ -62,7 +63,7 @@ export const useTransactionsStore = create<TransactionsState>((set) => ({
 
     if (error) {
       console.error("Erreur Supabase lors de l'insertion:", error);
-      alert("Erreur lors de la création de la transaction: " + error.message);
+      toast.error("Erreur lors de la création de la transaction");
       return;
     }
 

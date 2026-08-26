@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
 import { seedDefaultCategories, seedDefaultAccounts } from "@/lib/seed";
 import { syncLiabilityPayments } from "@/lib/services/recurringService";
+import { recordPatrimoineSnapshot } from "@/lib/services/patrimoineSnapshotService";
 import { translateError } from "@/lib/utils/errors";
 import type { User } from "@supabase/supabase-js";
 
@@ -14,6 +15,16 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+let liabilitySyncTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleLiabilitySync(userId: string) {
+  if (liabilitySyncTimeout) clearTimeout(liabilitySyncTimeout);
+  liabilitySyncTimeout = setTimeout(() => {
+    syncLiabilityPayments(userId).catch(() => {});
+    recordPatrimoineSnapshot(userId).catch(() => {});
+  }, 500);
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: true,
@@ -23,7 +34,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (session?.user) {
       seedDefaultCategories(session.user.id).catch(() => {});
       seedDefaultAccounts(session.user.id).catch(() => {});
-      syncLiabilityPayments(session.user.id).catch(() => {});
+      scheduleLiabilitySync(session.user.id);
     }
     set({ user: session?.user ?? null, loading: false });
 
@@ -31,7 +42,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (session?.user) {
         seedDefaultCategories(session.user.id).catch(() => {});
         seedDefaultAccounts(session.user.id).catch(() => {});
-        syncLiabilityPayments(session.user.id).catch(() => {});
+        scheduleLiabilitySync(session.user.id);
       }
       set({ user: session?.user ?? null });
     });

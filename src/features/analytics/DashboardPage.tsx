@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { useAccountsStore } from "@/stores/useAccountsStore";
@@ -14,6 +15,7 @@ import { Modal } from "@/components/ui/Modal";
 import TransactionForm from "@/features/transactions/TransactionForm";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { computeAccountBalance, computeTotalBalance } from "@/lib/utils/accounts";
 
 const CATEGORY_COLORS = [
   "#6366f1", "#10b981", "#f59e0b", "#f43f5e", "#8b5cf6", 
@@ -46,6 +48,7 @@ export default function DashboardPage() {
   const globalCurrency = useSettingsStore((s) => s.currency);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [goals, setGoals] = useState<any[]>([]);
+  const navigate = useNavigate();
 
   // Modal states
   const [txModalOpen, setTxModalOpen] = useState(false);
@@ -102,20 +105,10 @@ export default function DashboardPage() {
   const cashflow = income - expenses;
   const savingsRate = income > 0 ? (cashflow / income) * 100 : 0;
 
-  const totalBalance = useMemo(() => {
-    return accounts.reduce((total, acc) => {
-      const outTx = transactions.filter(t => t.account_id === acc.id);
-      const inTx = transactions.filter(t => t.transfer_to_account_id === acc.id);
-      
-      const inc = outTx.filter(t => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
-      const exp = outTx.filter(t => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
-      const transferOut = outTx.filter(t => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
-      const transferIn = inTx.filter(t => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
-      
-      const accBalance = Number(acc.initial_balance || 0) + inc - exp - transferOut + transferIn;
-      return total + convertToBase(accBalance, acc.currency);
-    }, 0);
-  }, [accounts, transactions, globalCurrency]);
+  const totalBalance = useMemo(
+    () => computeTotalBalance(accounts, transactions, convertToBase),
+    [accounts, transactions, globalCurrency]
+  );
 
   // Category breakdown for current month
   const categoryData = useMemo(() => {
@@ -329,14 +322,7 @@ export default function DashboardPage() {
               <p className="text-center text-text-muted text-sm py-8">Aucun compte configuré</p>
             )}
             {accounts.map((acc) => {
-              // Calculate balance from transactions
-              const outTx = transactions.filter((t) => t.account_id === acc.id);
-              const inTx = transactions.filter((t) => t.transfer_to_account_id === acc.id);
-              const accIncome = outTx.filter((t) => t.flow === "income").reduce((s, t) => s + Number(t.amount), 0);
-              const accExpenses = outTx.filter((t) => t.flow === "expense").reduce((s, t) => s + Number(t.amount), 0);
-              const transferOut = outTx.filter((t) => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
-              const transferIn = inTx.filter((t) => t.flow === "transfer").reduce((s, t) => s + Number(t.amount), 0);
-              const accBalance = Number(acc.initial_balance || 0) + accIncome - accExpenses - transferOut + transferIn;
+              const accBalance = computeAccountBalance(acc, transactions);
               return (
                 <div key={acc.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-2 transition-colors">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${acc.color}20`, color: acc.color }}>
@@ -361,7 +347,7 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-brand-400" /> Objectifs prioritaires</h2>
-            <button className="text-xs text-brand-400 hover:underline">Tout voir</button>
+            <button onClick={() => navigate("/objectifs")} className="text-xs text-brand-400 hover:underline">Tout voir</button>
           </div>
           <div className="grid sm:grid-cols-3 gap-4">
             {goals.map((g) => {

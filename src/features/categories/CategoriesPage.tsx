@@ -4,15 +4,18 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, Trash2, Tag, Sparkles } from "lucide-react";
+import { Plus, Trash2, Tag, Sparkles, Edit2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { seedDefaultCategories } from "@/lib/seed";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { toast } from "sonner";
+import type { Category } from "@/types";
 
 export default function CategoriesPage() {
-  const { categories, loading, fetch, remove } = useCategoriesStore();
+  const { categories, loading, fetch, remove, update } = useCategoriesStore();
   const { user } = useAuthStore();
   const [formOpen, setFormOpen] = useState(false);
+  const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("📁");
   const [color, setColor] = useState("#6366f1");
@@ -20,6 +23,10 @@ export default function CategoriesPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { fetch(); }, [fetch]);
+
+  const resetForm = () => {
+    setName(""); setIcon("📁"); setColor("#6366f1"); setFlow("expense");
+  };
 
   const addCategory = async () => {
     if (!name || !user) return;
@@ -34,13 +41,40 @@ export default function CategoriesPage() {
     await fetch();
     setSaving(false);
     setFormOpen(false);
-    setName("");
+    resetForm();
+  };
+
+  const handleEdit = async () => {
+    if (!name || !editingCat) return;
+    setSaving(true);
+    await update(editingCat.id, { name, icon, color, flow });
+    setSaving(false);
+    setFormOpen(false);
+    setEditingCat(null);
+    resetForm();
+    toast.success("Catégorie mise à jour");
+  };
+
+  const openEdit = (cat: Category) => {
+    setEditingCat(cat);
+    setName(cat.name);
+    setIcon(cat.icon);
+    setColor(cat.color);
+    setFlow(cat.flow);
+    setFormOpen(true);
+  };
+
+  const openCreate = () => {
+    setEditingCat(null);
+    resetForm();
+    setFormOpen(true);
   };
 
   const reseed = async () => {
-    if (!user || !confirm("Voulez-vous restaurer les catégories par défaut ?")) return;
+    if (!user) return;
     await seedDefaultCategories(user.id);
     await fetch();
+    toast.success("Catégories restaurées");
   };
 
   const cleanDuplicates = async () => {
@@ -66,10 +100,10 @@ export default function CategoriesPage() {
 
     if (toDelete.length > 0) {
       await supabase.from("categories").delete().in("id", toDelete);
-      alert(`${toDelete.length} doublons supprimés !`);
+      toast.success(`${toDelete.length} doublons supprimés`);
       await fetch();
     } else {
-      alert("Aucun doublon trouvé.");
+      toast.info("Aucun doublon trouvé");
     }
     setSaving(false);
   };
@@ -84,7 +118,7 @@ export default function CategoriesPage() {
         <div className="flex gap-2">
           <Button variant="secondary" onClick={cleanDuplicates} icon={<Sparkles className="w-4 h-4" />}>Nettoyer doublons</Button>
           <Button variant="secondary" onClick={reseed}>Restaurer défauts</Button>
-          <Button icon={<Plus className="w-4 h-4" />} onClick={() => setFormOpen(true)}>Nouvelle</Button>
+          <Button icon={<Plus className="w-4 h-4" />} onClick={openCreate}>Nouvelle</Button>
         </div>
       </div>
 
@@ -113,7 +147,10 @@ export default function CategoriesPage() {
                   </p>
                 </div>
               </div>
-              <button onClick={() => remove(c.id)} className="p-2 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all">
+              <button onClick={() => openEdit(c)} className="p-2 text-text-muted hover:text-brand-400 opacity-0 group-hover:opacity-100 transition-all">
+                <Edit2 className="w-4 h-4" />
+              </button>
+              <button onClick={() => { remove(c.id); toast.success("Catégorie supprimée"); }} className="p-2 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -121,7 +158,7 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      <Modal isOpen={formOpen} onClose={() => setFormOpen(false)} title="Nouvelle catégorie" size="sm">
+      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); setEditingCat(null); }} title={editingCat ? "Modifier la catégorie" : "Nouvelle catégorie"} size="sm">
         <div className="space-y-4">
           <Input label="Nom" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Restaurant, Cinéma..." />
           <div className="grid grid-cols-2 gap-4">
@@ -136,11 +173,11 @@ export default function CategoriesPage() {
               { value: "both", label: "Les deux" }
             ]} 
             value={flow} 
-            onChange={(e) => setFlow(e.target.value as any)} 
+            onChange={(e) => setFlow(e.target.value as "income" | "expense" | "both")} 
           />
           <div className="flex gap-3 pt-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setFormOpen(false)}>Annuler</Button>
-            <Button className="flex-1" loading={saving} onClick={addCategory}>Créer</Button>
+            <Button variant="secondary" className="flex-1" onClick={() => { setFormOpen(false); setEditingCat(null); }}>Annuler</Button>
+            <Button className="flex-1" loading={saving} onClick={editingCat ? handleEdit : addCategory}>{editingCat ? "Mettre à jour" : "Créer"}</Button>
           </div>
         </div>
       </Modal>

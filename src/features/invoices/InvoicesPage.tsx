@@ -16,13 +16,16 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import {
-  Plus, FileText, Trash2, Printer, Check, Send, XCircle, Banknote, AlertTriangle, Calendar, Clock, Mail,
+  Plus, FileText, Trash2, Printer, Check, Send, XCircle, Banknote, AlertTriangle, Calendar, Clock, Mail, Repeat,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Invoice, InvoiceStatus, InvoicePayment } from "@/types";
 import { splitByPercent, percentsAreComplete, isPaymentOverdue, summarizePayments } from "@/lib/utils/invoicePayments";
 import { buildDunningMailto } from "@/lib/utils/reminders";
 import { openExternal } from "@/lib/tauri";
+import { useClientsStore, clientDetailsText } from "@/stores/useClientsStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import { monthlyBillingCandidates, previousMonth, timeBillingLine } from "@/lib/utils/missionMetrics";
 
 const ISSUER_KEY = "mapoche-invoice-issuer";
 
@@ -49,7 +52,12 @@ function loadIssuer(): { name: string; details: string } {
 
 export default function InvoicesPage() {
   const { invoices, loading, schemaError, fetch, create, updateStatus, remove, addItem, removeItem, markInvoicePaid, markPaymentPaid, addPayment, removePayment } = useInvoicesStore();
-  const { projects, fetch: fetchProjects } = useProjectsStore();
+  const { projects, milestones, fetch: fetchProjects, updateMilestone } = useProjectsStore();
+  const { clients, fetch: fetchClients } = useClientsStore();
+  const hoursPerDay = useSettingsStore((s) => s.hoursPerDay);
+  const [regieMonth, setRegieMonth] = useState<string | null>(null);
+  const [regieBusy, setRegieBusy] = useState(false);
+  const [milestoneIds, setMilestoneIds] = useState<string[]>([]);
   const { entries, loaded: timeLoaded, fetch: fetchTime } = useTimeStore();
   const { accounts, fetch: fetchAcc } = useAccountsStore();
 
@@ -86,21 +94,90 @@ export default function InvoicesPage() {
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
-    fetch(); fetchProjects(); fetchAcc();
+    fetch(); fetchProjects(); fetchAcc(); fetchClients();
     if (!timeLoaded) fetchTime();
     const iss = loadIssuer();
     setCIssuerName(iss.name); setCIssuerDetails(iss.details);
-  }, [fetch, fetchProjects, fetchAcc, fetchTime, timeLoaded]);
+  }, [fetch, fetchProjects, fetchAcc, fetchClients, fetchTime, timeLoaded]);
 
-  // Pré-sélection depuis une mission (?project=ID)
+  // Pré-sélection depuis une mission (?project=ID) ou facturation de régie (?regie=AAAA-MM)
   useEffect(() => {
     const pid = searchParams.get("project");
+    const regie = searchParams.get("regie");
     if (pid && projects.some((p) => p.id === pid)) {
-      setCProject(pid);
+      selectProject(pid);
       setCreateOpen(true);
       setSearchParams({}, { replace: true });
+    } else if (regie && /^\d{4}-\d{2}$/.test(regie)) {
+      setRegieMonth(regie);
+      setSearchParams({}, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, projects, setSearchParams]);
+
+  const clientOf = (projectId: string) => {
+    const p = projects.find((x) => x.id === projectId);
+    return p?.client_id ? clients.find((c) => c.id === p.client_id) || null : null;
+  };
+
+  /** Choisit la mission et pré-remplit coordonnées client et échéance depuis la fiche client. */
+  const selectProject = (pid: string) => {
+    setCProject(pid);
+    setMilestoneIds([]);
+    const client = pid ? clientOf(pid) : null;
+    if (!client) return;
+    const details = clientDetailsText(client);
+    if (details) setCClientDetails(details);
+    if (client.payment_terms_days != null) {
+      const d = new Date(`${cIssue}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + client.payment_terms_days);
+      setCDue(d.toISOString().slice(0, 10));
+    }
+  };
+
+  // Paiements prévus (acompte, jalons) de la mission, non encore réglés
+  const billableMilestones = cProject
+    ? milestones.filter((m) => m.project_id === cProject && m.kind === "payment" && !m.done && m.amount != null)
+    : [];
+
+  const regieCandidates = useMemo(
+    () => (regieMonth ? monthlyBillingCandidates(projects, entries, regieMonth, hoursPerDay) : []),
+    [regieMonth, projects, entries, hoursPerDay],
+  );
+
+  const lastMonthRegie = useMemo(
+    () => monthlyBillingCandidates(projects, entries, previousMonth(today), hoursPerDay),
+    [projects, entries, today, hoursPerDay],
+  );
+
+  const createRegieInvoices = async () => {
+    if (!regieMonth) return;
+    setRegieBusy(true);
+    const issuer = loadIssuer();
+    const monthLabel = formatDate(`${regieMonth}-01`, "MMMM yyyy");
+    for (const c of regieCandidates) {
+      if (!c.line) continue;
+      const client = clientOf(c.project.id);
+      const due = new Date(`${today}T00:00:00Z`);
+      due.setUTCDate(due.getUTCDate() + (client?.payment_terms_days ?? 30));
+      await create({
+        project_id: c.project.id,
+        issue_date: today,
+        due_date: due.toISOString().slice(0, 10),
+        vat_rate: 0,
+        notes: `Prestations de ${monthLabel}`,
+        issuer_name: issuer.name || null,
+        issuer_details: issuer.details || null,
+        client_details: client ? clientDetailsText(client) || null : null,
+        payment_terms: null,
+        items: [{ ...c.line, label: `${c.line.label} — ${monthLabel}`, kind: "time" }],
+        entryIds: c.entryIds,
+      });
+    }
+    setRegieBusy(false);
+    setRegieMonth(null);
+    setStatusFilter("draft");
+  };
 
   const filtered = useMemo(
     () => invoices.filter((i) => !statusFilter || i.status === statusFilter),
@@ -116,19 +193,16 @@ export default function InvoicesPage() {
   const selectedProject = projects.find((p) => p.id === cProject);
   const previewItems = useMemo(() => {
     const items: Array<{ label: string; quantity: number; unit_price: number }> = [];
-    if (cProject && includeTime && selectedProject?.hourly_rate) {
-      const mins = unbilledMinutes(cProject);
-      if (mins > 0) {
-        items.push({
-          label: `Temps de travail — ${formatDuration(mins)} (${selectedProject.client_name} / ${selectedProject.name})`,
-          quantity: Math.round((mins / 60) * 100) / 100,
-          unit_price: Number(selectedProject.hourly_rate),
-        });
-      }
+    if (cProject && includeTime && selectedProject) {
+      const line = timeBillingLine(selectedProject, unbilledMinutes(cProject), hoursPerDay);
+      if (line) items.push(line);
     }
     if (cProject && includeFixed && selectedProject?.total_amount != null) {
       items.push({ label: `Forfait — ${selectedProject.name}`, quantity: 1, unit_price: Number(selectedProject.total_amount) });
     }
+    billableMilestones.filter((m) => milestoneIds.includes(m.id)).forEach((m) => {
+      items.push({ label: m.title, quantity: 1, unit_price: Number(m.amount) });
+    });
     freeLines.forEach((l) => {
       if (l.label.trim() && parseFloat(l.price) > 0) {
         items.push({ label: l.label.trim(), quantity: parseFloat(l.qty) || 1, unit_price: parseFloat(l.price) });
@@ -136,7 +210,7 @@ export default function InvoicesPage() {
     });
     return items;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cProject, includeTime, includeFixed, freeLines, entries, projects]);
+  }, [cProject, includeTime, includeFixed, freeLines, entries, projects, milestones, milestoneIds, hoursPerDay]);
 
   const previewTotals = totals(previewItems, parseFloat(cVat) || 0);
   const paymentTerms = cPayments.map((p) => ({ label: p.label.trim(), percent: parseFloat(p.percent) || 0, due_date: p.due_date || null }));
@@ -168,6 +242,9 @@ export default function InvoicesPage() {
       payments: previewPayments,
       entryIds,
     });
+    // Jalons facturés : cochés comme faits
+    for (const id of milestoneIds) await updateMilestone(id, { done: true, done_at: today });
+    setMilestoneIds([]);
     setSaving(false);
     setCreateOpen(false);
     setCProject(""); setCDue(""); setCVat("0"); setCNotes(""); setCClientDetails("");
@@ -302,6 +379,49 @@ export default function InvoicesPage() {
         </div>
       )}
 
+      {lastMonthRegie.length > 0 && (
+        <button
+          onClick={() => setRegieMonth(previousMonth(today))}
+          className="w-full flex items-center gap-2 bg-sky-500/10 border border-sky-500/30 rounded-2xl px-4 py-3 text-xs text-sky-400 text-left hover:bg-sky-500/15"
+        >
+          <Repeat className="w-4 h-4 shrink-0" />
+          <span className="flex-1">
+            {lastMonthRegie.length} mission{lastMonthRegie.length > 1 ? "s" : ""} en régie à facturer pour {formatDate(`${previousMonth(today)}-01`, "MMMM")}
+          </span>
+          <span className="font-semibold">Préparer les factures →</span>
+        </button>
+      )}
+
+      {/* Régie : factures mensuelles */}
+      <Modal isOpen={!!regieMonth} onClose={() => setRegieMonth(null)} title={regieMonth ? `Régie — ${formatDate(`${regieMonth}-01`, "MMMM yyyy")}` : ""}>
+        <div className="space-y-4">
+          {regieCandidates.length === 0 ? (
+            <p className="text-xs text-text-muted text-center py-6">Aucun temps facturable non facturé sur ce mois pour les missions en régie.</p>
+          ) : (
+            <>
+              <p className="text-xs text-text-secondary">Un brouillon par mission, avec le temps du mois au TJM (ou au taux horaire). Tu pourras les relire avant envoi.</p>
+              <div className="space-y-1.5">
+                {regieCandidates.map((c) => (
+                  <div key={c.project.id} className="flex items-center gap-2 bg-surface-2 rounded-xl px-3 py-2 text-xs">
+                    <span className="flex-1 truncate">{c.project.client_name} — {c.project.name}</span>
+                    <span className="font-mono text-text-muted">{formatDuration(c.minutes)}</span>
+                    {c.line
+                      ? <span className="font-mono font-bold text-emerald-400">{formatCurrency(c.line.quantity * c.line.unit_price)}</span>
+                      : <span className="text-amber-400">taux manquant</span>}
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <Button variant="secondary" className="flex-1" onClick={() => setRegieMonth(null)}>Annuler</Button>
+                <Button className="flex-1" loading={regieBusy} disabled={!regieCandidates.some((c) => c.line)} onClick={createRegieInvoices}>
+                  Créer {regieCandidates.filter((c) => c.line).length} brouillon{regieCandidates.filter((c) => c.line).length > 1 ? "s" : ""}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
       {/* Modal création */}
       <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Nouvelle facture" size="lg">
         <div className="space-y-4">
@@ -309,7 +429,7 @@ export default function InvoicesPage() {
             label="Mission"
             options={projects.filter((p) => p.status === "active").map((p) => ({ value: p.id, label: `${p.client_name} — ${p.name}` }))}
             value={cProject}
-            onChange={(e) => setCProject(e.target.value)}
+            onChange={(e) => selectProject(e.target.value)}
             placeholder="Sans mission"
           />
           <div className="grid grid-cols-2 gap-4">
@@ -328,8 +448,24 @@ export default function InvoicesPage() {
               <label className="flex items-center gap-2 text-xs cursor-pointer">
                 <input type="checkbox" checked={includeTime} onChange={(e) => setIncludeTime(e.target.checked)} className="w-4 h-4 accent-emerald-500" />
                 Temps non facturé : <b className="font-mono">{formatDuration(unbilledMinutes(cProject))}</b>
-                {selectedProject.hourly_rate ? <span className="text-emerald-400 font-mono">→ {formatCurrency((unbilledMinutes(cProject) / 60) * Number(selectedProject.hourly_rate))}</span> : <span className="text-amber-400">(taux horaire non défini)</span>}
+                {(() => {
+                  const line = timeBillingLine(selectedProject, unbilledMinutes(cProject), hoursPerDay);
+                  if (line) return <span className="text-emerald-400 font-mono">→ {formatCurrency(line.quantity * line.unit_price)}</span>;
+                  return unbilledMinutes(cProject) > 0 ? <span className="text-amber-400">(TJM ou taux horaire non défini)</span> : null;
+                })()}
               </label>
+              {billableMilestones.map((m) => (
+                <label key={m.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={milestoneIds.includes(m.id)}
+                    onChange={(e) => setMilestoneIds((ids) => e.target.checked ? [...ids, m.id] : ids.filter((x) => x !== m.id))}
+                    className="w-4 h-4 accent-emerald-500"
+                  />
+                  {m.title} : <b className="font-mono">{formatCurrency(Number(m.amount))}</b>
+                  {m.due_date && <span className="text-text-muted">· prévu le {formatDate(m.due_date, "d MMM")}</span>}
+                </label>
+              ))}
               {selectedProject.total_amount != null && (
                 <label className="flex items-center gap-2 text-xs cursor-pointer">
                   <input type="checkbox" checked={includeFixed} onChange={(e) => setIncludeFixed(e.target.checked)} className="w-4 h-4 accent-emerald-500" />

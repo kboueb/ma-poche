@@ -16,6 +16,13 @@ import {
   CHART_SERIES, tooltipStyle,
 } from "@/lib/charts";
 import { Stat } from "@/components/ui/Stat";
+import { useQuotesStore } from "@/stores/useQuotesStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import {
+  budgetStatus, expectedRevenue, isQuoteExpired, monthlyBillingCandidates, nextMonths, previousMonth,
+  projectMinutes, quoteTotals, workloadByMonth,
+} from "@/lib/utils/missionMetrics";
+import { Gauge, FileSignature, Repeat } from "lucide-react";
 
 function isOverdue(dateStr: string | null): boolean {
   if (!dateStr) return false;
@@ -26,13 +33,39 @@ export default function MissionsDashboard() {
   const { projects, milestones, fetch: fetchProjects } = useProjectsStore();
   const { tasks, entries, loaded: timeLoaded, fetch: fetchTime } = useTimeStore();
   const { transactions, fetch: fetchTx } = useTransactionsStore();
+  const { quotes, fetch: fetchQuotes } = useQuotesStore();
+  const { hoursPerDay, capacityDaysPerMonth } = useSettingsStore();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchProjects();
     fetchTx();
+    fetchQuotes();
     if (!timeLoaded) fetchTime();
-  }, [fetchProjects, fetchTx, fetchTime, timeLoaded]);
+  }, [fetchProjects, fetchTx, fetchQuotes, fetchTime, timeLoaded]);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // ---- Charge des 3 prochains mois ----
+  const workload = useMemo(
+    () => workloadByMonth(projects, entries, nextMonths(today, 3), today, hoursPerDay),
+    [projects, entries, today, hoursPerDay],
+  );
+
+  // ---- À traiter : régie du mois dernier, devis en attente, budgets ----
+  const lastMonth = previousMonth(today);
+  const regieToBill = useMemo(
+    () => monthlyBillingCandidates(projects, entries, lastMonth, hoursPerDay),
+    [projects, entries, lastMonth, hoursPerDay],
+  );
+  const pendingQuotes = useMemo(() => quotes.filter((q) => q.status === "sent"), [quotes]);
+  const budgetAlerts = useMemo(
+    () => projects
+      .filter((p) => p.status === "active")
+      .map((p) => ({ p, b: budgetStatus(p, projectMinutes(p.id, entries), hoursPerDay) }))
+      .filter((x) => x.b && x.b.level !== "ok"),
+    [projects, entries, hoursPerDay],
+  );
 
   const now = new Date();
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -63,11 +96,12 @@ export default function MissionsDashboard() {
 
   const outstanding = useMemo(
     () => activeProjects.reduce((s, p) => {
-      if (p.total_amount == null) return s;
-      return s + Math.max(Number(p.total_amount) - totalProjectIncome(p.id), 0);
+      const expected = p.recurring_monthly ? null : expectedRevenue(p, hoursPerDay);
+      if (expected == null) return s;
+      return s + Math.max(expected - totalProjectIncome(p.id), 0);
     }, 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeProjects, transactions]
+    [activeProjects, transactions, hoursPerDay]
   );
 
   const weekEntries = useMemo(() => entries.filter((e) => inWeek(e.started_at)), [entries]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -80,10 +114,11 @@ export default function MissionsDashboard() {
     weekEntries.forEach((e) => {
       if (!e.billable) return;
       const p = projects.find((x) => x.id === e.project_id);
-      if (p?.hourly_rate) total += (entryMinutes(e.started_at, e.ended_at, e.duration_minutes) / 60) * Number(p.hourly_rate);
+      const rate = p?.hourly_rate ? Number(p.hourly_rate) : p?.daily_rate ? Number(p.daily_rate) / hoursPerDay : 0;
+      total += (entryMinutes(e.started_at, e.ended_at, e.duration_minutes) / 60) * rate;
     });
     return total;
-  }, [weekEntries, projects]);
+  }, [weekEntries, projects, hoursPerDay]);
 
   const overdueProjects = useMemo(
     () => activeProjects.filter((p) => isOverdue(p.deadline)),
@@ -206,6 +241,90 @@ export default function MissionsDashboard() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
+        {/* Charge */}
+        <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold flex items-center gap-2"><Gauge className="w-4 h-4 text-brand-400" />Charge à venir</h2>
+            <span className="text-[11px] text-text-muted">capacité {capacityDaysPerMonth} j/mois</span>
+          </div>
+          <div className="space-y-3">
+            {workload.map((m) => {
+              const pct = Math.round((m.days / capacityDaysPerMonth) * 100);
+              const color = pct > 100 ? "bg-rose-500" : pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-sky-500";
+              const top = [...m.byProject].sort((a, b) => b.days - a.days).slice(0, 2)
+                .map((x) => projects.find((p) => p.id === x.projectId)?.client_name).filter(Boolean).join(", ");
+              return (
+                <div key={m.month}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-medium capitalize">{formatDate(`${m.month}-01`, "MMMM")}</span>
+                    <span className="font-mono text-text-muted">
+                      {String(Math.round(m.days * 10) / 10).replace(".", ",")} j · <b className={pct > 100 ? "text-rose-400" : "text-text-primary"}>{pct} %</b>
+                    </span>
+                  </div>
+                  <div className="h-2 bg-surface-3 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                  </div>
+                  <p className="text-[10px] text-text-muted mt-0.5 truncate">
+                    {m.days === 0 ? "Rien de vendu : c'est le moment de prospecter." : top}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-text-muted mt-3">Jours restants des missions actives (budget − temps passé) répartis jusqu'à leur échéance ; régies au nombre de jours par mois.</p>
+        </div>
+
+        {/* À traiter */}
+        <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5">
+          <h2 className="text-sm font-semibold mb-3">À traiter</h2>
+          {regieToBill.length === 0 && pendingQuotes.length === 0 && budgetAlerts.length === 0 ? (
+            <p className="text-xs text-text-muted py-4 text-center">Rien à signaler.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {regieToBill.length > 0 && (
+                <button
+                  onClick={() => navigate(`/factures?regie=${lastMonth}`)}
+                  className="w-full flex items-center gap-2 p-2.5 rounded-xl bg-sky-500/10 text-xs text-left hover:bg-sky-500/15"
+                >
+                  <Repeat className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span className="flex-1">
+                    <b>{regieToBill.length} régie{regieToBill.length > 1 ? "s" : ""}</b> à facturer pour {formatDate(`${lastMonth}-01`, "MMMM")}
+                  </span>
+                  <span className="font-mono font-bold">
+                    {formatCurrency(regieToBill.reduce((s, c) => s + (c.line ? c.line.quantity * c.line.unit_price : 0), 0))}
+                  </span>
+                </button>
+              )}
+              {pendingQuotes.slice(0, 3).map((q) => {
+                const expired = isQuoteExpired(q, today);
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => navigate(`/devis?quote=${q.id}`)}
+                    className="w-full flex items-center gap-2 p-2.5 rounded-xl bg-surface-2 text-xs text-left hover:bg-surface-3"
+                  >
+                    <FileSignature className={`w-4 h-4 shrink-0 ${expired ? "text-amber-400" : "text-text-muted"}`} />
+                    <span className="flex-1 truncate">{q.title}</span>
+                    <span className="font-mono">{formatCurrency(quoteTotals(q.items || [], q.vat_rate).ht)}</span>
+                    <span className={`shrink-0 ${expired ? "text-amber-400 font-semibold" : "text-text-muted"}`}>{expired ? "Expiré : relancer" : "En attente"}</span>
+                  </button>
+                );
+              })}
+              {budgetAlerts.slice(0, 3).map(({ p, b }) => (
+                <button
+                  key={p.id}
+                  onClick={() => navigate(`/missions?project=${p.id}`)}
+                  className="w-full flex items-center gap-2 p-2.5 rounded-xl bg-surface-2 text-xs text-left hover:bg-surface-3"
+                >
+                  <Gauge className={`w-4 h-4 shrink-0 ${b!.level === "over" ? "text-rose-400" : "text-amber-400"}`} />
+                  <span className="flex-1 truncate">{p.client_name} — {p.name}</span>
+                  <span className={`font-mono font-bold ${b!.level === "over" ? "text-rose-400" : "text-amber-400"}`}>{b!.pct} % du budget</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Validations */}
         <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">

@@ -161,13 +161,14 @@ export const useQuotesStore = create<QuotesState>((set, get) => ({
     });
     if (!project) return null;
     if (q.deposit_percent && Number(q.deposit_percent) > 0) {
-      const { ttc } = quoteTotals(items, q.vat_rate);
+      // Montant HT : facturé tel quel, la TVA s'ajoute sur la facture
+      const { ht } = quoteTotals(items, q.vat_rate);
       await projects.addMilestone({
         project_id: project.id,
         title: `Acompte ${Number(q.deposit_percent)} % (devis ${q.number})`,
         kind: "payment",
         due_date: today,
-        amount: Math.round(ttc * Number(q.deposit_percent)) / 100,
+        amount: Math.round(ht * Number(q.deposit_percent)) / 100,
         done: false,
         done_at: null,
         notes: null,

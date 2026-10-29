@@ -17,6 +17,19 @@ interface ProjectsState {
   removeMilestone: (id: string) => Promise<void>;
 }
 
+// Colonnes ajoutées par add_clients_quotes.sql : ignorées tant que la migration n'est pas appliquée
+const CLIENT_COLUMNS = ["client_id", "billing_mode", "daily_rate", "budget_days", "recurring_monthly"] as const;
+
+function isMissingColumnError(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: string }).code === "PGRST204";
+}
+
+function withoutClientColumns<T extends Partial<Project>>(row: T): Partial<Project> {
+  const copy: Partial<Project> = { ...row };
+  CLIENT_COLUMNS.forEach((c) => delete copy[c]);
+  return copy;
+}
+
 export const useProjectsStore = create<ProjectsState>((set) => ({
   projects: [],
   milestones: [],
@@ -40,11 +53,13 @@ export const useProjectsStore = create<ProjectsState>((set) => ({
   addProject: async (p) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const { data, error } = await supabase
+    const insert = (row: Partial<Project>) => supabase
       .from("projects")
-      .insert({ ...p, user_id: user.id })
+      .insert({ ...row, user_id: user.id })
       .select()
       .single();
+    let { data, error } = await insert(p);
+    if (isMissingColumnError(error)) ({ data, error } = await insert(withoutClientColumns(p)));
     if (error) {
       toast.error("Erreur lors de la création du projet");
       return null;
@@ -54,7 +69,8 @@ export const useProjectsStore = create<ProjectsState>((set) => ({
   },
 
   updateProject: async (id, data) => {
-    await supabase.from("projects").update(data).eq("id", id);
+    const { error } = await supabase.from("projects").update(data).eq("id", id);
+    if (isMissingColumnError(error)) await supabase.from("projects").update(withoutClientColumns(data)).eq("id", id);
     set((s) => ({ projects: s.projects.map((p) => p.id === id ? { ...p, ...data } : p) }));
   },
 

@@ -14,6 +14,12 @@ interface SettingsState {
   appLockEnabled: boolean;
   /** Minutes en arrière-plan avant reverrouillage (0 = à chaque retour) */
   relockAfterMinutes: number;
+  /** Heures facturables dans une journée (conversion temps ↔ jours, TJM) */
+  hoursPerDay: number;
+  /** Jours de production disponibles par mois (charge / taux d'occupation) */
+  capacityDaysPerMonth: number;
+  setHoursPerDay: (v: number) => void;
+  setCapacityDaysPerMonth: (v: number) => void;
   setCurrency: (c: string) => void;
   setHasSeenTour: (v: boolean) => void;
   setRemindersEnabled: (v: boolean) => void;
@@ -33,6 +39,10 @@ export const useSettingsStore = create<SettingsState>()(
       provisionCategoryIds: [],
       appLockEnabled: false,
       relockAfterMinutes: 5,
+      hoursPerDay: 7,
+      capacityDaysPerMonth: 18,
+      setHoursPerDay: (v) => set({ hoursPerDay: Math.min(24, Math.max(1, v)) }),
+      setCapacityDaysPerMonth: (v) => set({ capacityDaysPerMonth: Math.min(31, Math.max(1, v)) }),
       setCurrency: (c) => set({ currency: c }),
       setHasSeenTour: (v) => set({ hasSeenTour: v }),
       setRemindersEnabled: (v) => set({ remindersEnabled: v }),

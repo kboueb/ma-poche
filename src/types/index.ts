@@ -147,19 +147,98 @@ export interface Attachment {
 export type ProjectStatus = "prospect" | "active" | "done" | "archived";
 export type MilestoneKind = "deadline" | "validation" | "payment";
 
+export type BillingMode = "fixed" | "daily" | "hourly";
+
+export interface Client {
+  id: string;
+  user_id: string;
+  name: string;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  siret: string | null;
+  vat_number: string | null;
+  payment_terms_days: number | null;
+  default_daily_rate: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface Project {
   id: string;
   user_id: string;
-  client_name: string;
+  client_id?: string | null;
+  client_name: string; // copie du nom du client (affichage, compatibilité)
   name: string;
   description: string | null;
   status: ProjectStatus;
+  billing_mode?: BillingMode | null;
   total_amount: number | null;
   hourly_rate: number | null;
+  daily_rate?: number | null;
+  budget_days?: number | null;
+  recurring_monthly?: boolean | null; // régie : facture mensuelle du temps passé
   start_date: string | null;
   deadline: string | null;
   color: string;
   notes: string | null;
+  created_at: string;
+}
+
+export type QuoteStatus = "draft" | "sent" | "accepted" | "declined";
+
+export interface QuoteItem {
+  id: string;
+  user_id: string;
+  quote_id: string;
+  label: string;
+  quantity: number;
+  unit: string | null; // "jour", "heure", "forfait"...
+  unit_price: number;
+  position: number;
+  created_at: string;
+}
+
+export interface Quote {
+  id: string;
+  user_id: string;
+  client_id: string | null;
+  project_id: string | null;
+  number: string;
+  title: string;
+  status: QuoteStatus;
+  issue_date: string;
+  valid_until: string | null;
+  vat_rate: number;
+  deposit_percent: number | null;
+  notes: string | null;
+  accepted_at: string | null;
+  created_at: string;
+  // Jointures optionnelles
+  client?: Client | null;
+  items?: QuoteItem[];
+}
+
+export interface MissionTemplateTask {
+  title: string;
+  estimated_minutes: number | null;
+}
+
+export interface MissionTemplateMilestone {
+  title: string;
+  kind: MilestoneKind;
+  offset_days: number | null; // jours après le début de la mission
+  amount_percent: number | null; // % du montant de la mission (paiements)
+}
+
+export interface MissionTemplate {
+  id: string;
+  user_id: string;
+  name: string;
+  billing_mode: BillingMode | null;
+  tasks: MissionTemplateTask[];
+  milestones: MissionTemplateMilestone[];
   created_at: string;
 }
 

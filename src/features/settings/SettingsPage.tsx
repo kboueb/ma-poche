@@ -28,6 +28,8 @@ export default function SettingsPage() {
     provisionCategoryIds, setProvisionCategoryIds,
     appLockEnabled, setAppLockEnabled,
     relockAfterMinutes, setRelockAfterMinutes,
+    hoursPerDay, setHoursPerDay,
+    capacityDaysPerMonth, setCapacityDaysPerMonth,
   } = useSettingsStore();
   const [canLock, setCanLock] = useState(false);
   const { categories, fetch: fetchCat } = useCategoriesStore();
@@ -310,6 +312,38 @@ export default function SettingsPage() {
                 )}
               </>
             )}
+          </div>
+
+          <div className="pt-4 border-t border-surface-3 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-surface-2 flex items-center justify-center shrink-0">
+                <Briefcase className="w-5 h-5 text-brand-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Journée & capacité</p>
+                <p className="text-[11px] text-text-muted">Sert à convertir le temps en jours (TJM réel, budgets) et à calculer ta charge.</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-2 text-xs">
+                <span className="text-text-muted">Heures / jour</span>
+                <input
+                  type="number" min={1} max={24} step={0.5}
+                  value={hoursPerDay}
+                  onChange={(e) => setHoursPerDay(Number(e.target.value) || 7)}
+                  className="w-14 bg-surface-1 border border-surface-3 rounded-lg px-2 py-1 font-mono text-right outline-none focus:border-brand-500"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-2 text-xs">
+                <span className="text-text-muted">Jours dispo / mois</span>
+                <input
+                  type="number" min={1} max={31} step={1}
+                  value={capacityDaysPerMonth}
+                  onChange={(e) => setCapacityDaysPerMonth(Number(e.target.value) || 18)}
+                  className="w-14 bg-surface-1 border border-surface-3 rounded-lg px-2 py-1 font-mono text-right outline-none focus:border-brand-500"
+                />
+              </label>
+            </div>
           </div>
         </div>
       </section>

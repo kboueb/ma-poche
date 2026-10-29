@@ -223,7 +223,7 @@ export default function DashboardPage() {
           onClick={() => setTxModalOpen(true)}
           className="tour-add-button flex items-center gap-2 px-4 py-2 bg-surface-1 border border-surface-3 rounded-xl text-sm font-medium hover:bg-surface-2 transition-all"
         >
-          <Plus className="w-4 h-4 text-emerald-400" /> Nouvelle dépense
+          <Plus className="w-4 h-4 text-brand-400" /> Nouvelle transaction
         </button>
         <button 
           onClick={() => setGoalModalOpen(true)}

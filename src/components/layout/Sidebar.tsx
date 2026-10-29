@@ -76,23 +76,23 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav className="flex-1 flex flex-col gap-4 p-3 mt-2 overflow-y-auto">
+      <nav className="flex-1 flex flex-col gap-3 px-3 py-2 mt-2 overflow-y-auto">
         {NAV_SECTIONS.map((section) => (
           <div key={section.title}>
             <p className="px-4 mb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted/70">
               {section.title}
             </p>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               {section.items.map(({ to, icon: Icon, label, tourClass }) => (
                 <NavLink
                   key={to}
                   to={to}
                   end={to === "/"}
                   className={({ isActive }) =>
-                    `${tourClass} flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    `${tourClass} relative flex items-center gap-3 px-4 py-[7px] rounded-xl text-sm font-medium transition-colors ${
                       isActive
-                        ? "bg-brand-500/10 text-brand-400 border border-brand-500/20"
-                        : "text-text-secondary hover:text-text-primary hover:bg-surface-2 border border-transparent"
+                        ? "bg-brand-500/10 text-brand-400 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-brand-500"
+                        : "text-text-secondary hover:text-text-primary hover:bg-surface-2"
                     }`
                   }
                 >
@@ -105,18 +105,33 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-surface-3 space-y-1">
-        <NavLink to="/settings" className="tour-settings flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-all">
+      <div className="p-3 border-t border-surface-3 flex items-center gap-1">
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `tour-settings flex-1 flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+              isActive ? "bg-brand-500/10 text-brand-400" : "text-text-secondary hover:text-text-primary hover:bg-surface-2"
+            }`
+          }
+        >
           <Settings className="w-[18px] h-[18px]" />
           <span>Réglages</span>
         </NavLink>
-        <button onClick={toggleTheme} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-all">
+        <button
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Mode clair" : "Mode sombre"}
+          aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+          className="p-2.5 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-colors"
+        >
           {theme === "dark" ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
-          <span>{theme === "dark" ? "Mode clair" : "Mode sombre"}</span>
         </button>
-        <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-rose-400 hover:bg-rose-500/10 transition-all">
+        <button
+          onClick={logout}
+          title="Déconnexion"
+          aria-label="Déconnexion"
+          className="p-2.5 rounded-xl text-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+        >
           <LogOut className="w-[18px] h-[18px]" />
-          <span>Déconnexion</span>
         </button>
       </div>
     </aside>

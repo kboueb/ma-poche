@@ -14,6 +14,7 @@ import { Bell, BellOff, CalendarClock, Repeat, Landmark, CheckCircle2, Briefcase
 import { toast } from "sonner";
 import type { Liability } from "@/types";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const NOTIF_KEY = "mapoche-schedule-notified";
 
@@ -153,11 +154,11 @@ export default function SchedulePage() {
       />
 
       {upcoming.length === 0 ? (
-        <div className="text-center py-20 bg-surface-1 border-2 border-dashed border-surface-3 rounded-3xl">
-          <CalendarClock className="w-12 h-12 text-surface-3 mx-auto mb-4" />
-          <p className="text-text-muted">Aucun paiement prévu sur 60 jours</p>
-          <p className="text-text-muted text-xs mt-1">Transactions récurrentes, mensualités, échéances et validations de missions</p>
-        </div>
+        <EmptyState
+          icon={<CalendarClock />}
+          title="Aucun paiement prévu sur 60 jours"
+          description="Transactions récurrentes, mensualités, factures et validations de missions apparaîtront ici."
+        />
       ) : (
         <>
           {dueSoon.length > 0 && (

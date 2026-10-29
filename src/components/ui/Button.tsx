@@ -16,8 +16,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const base = "inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand-500 text-white hover:bg-brand-600 shadow-lg shadow-brand-500/20",
-  secondary: "bg-surface-3 text-text-primary border border-surface-5 hover:bg-surface-4",
+  // Mode clair : émeraude foncée (#059669) pour que le texte blanc reste lisible
+  primary: "bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white shadow-lg shadow-brand-500/20",
+  secondary: "bg-surface-1 text-text-primary border border-surface-4 hover:bg-surface-2 dark:bg-surface-2 dark:hover:bg-surface-3",
   ghost: "bg-transparent text-text-secondary hover:bg-surface-2 hover:text-text-primary",
   danger: "bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20",
 };

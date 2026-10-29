@@ -9,15 +9,15 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
   const [phase, setPhase] = useState<"enter" | "hold" | "exit">("enter");
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase("hold"), 600);
-    const t2 = setTimeout(() => setPhase("exit"), 1800);
-    const t3 = setTimeout(() => onDone(), 2400);
+    const t1 = setTimeout(() => setPhase("hold"), 350);
+    const t2 = setTimeout(() => setPhase("exit"), 1000);
+    const t3 = setTimeout(() => onDone(), 1400);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [onDone]);
 
   return (
     <div
-      className={`fixed inset-0 z-[99999] flex flex-col items-center justify-center select-none transition-all duration-600 ease-in-out bg-surface-0 ${
+      className={`fixed inset-0 z-[99999] flex flex-col items-center justify-center select-none transition-opacity duration-500 ease-in-out bg-surface-0 ${
         phase === "exit" ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
     >
@@ -25,7 +25,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
       <div
         className="absolute w-96 h-96 rounded-full blur-3xl pointer-events-none opacity-10"
         style={{
-          background: "radial-gradient(circle, #16a34a 0%, transparent 70%)",
+          background: "radial-gradient(circle, #10b981 0%, transparent 70%)",
           top: "10%",
           left: "50%",
           transform: "translateX(-50%)",
@@ -34,7 +34,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
 
       {/* Logo text */}
       <div
-        className="relative z-10 transition-all duration-600"
+        className="relative z-10 transition-all duration-500"
         style={{
           transform: phase === "enter" ? "scale(0.85) translateY(12px)" : "scale(1) translateY(0)",
           opacity: phase === "enter" ? 0 : 1,
@@ -46,7 +46,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
 
       {/* Loading dots */}
       <div
-        className="relative z-10 flex items-center gap-2 mt-10 transition-all duration-400"
+        className="relative z-10 flex items-center gap-2 mt-10 transition-opacity duration-300"
         style={{
           opacity: phase === "hold" ? 1 : 0,
         }}

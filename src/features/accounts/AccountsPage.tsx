@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import type { Account } from "@/types";
 import { PageHeader } from "@/components/ui/PageHeader";
 import AppIcon from "@/components/ui/AppIcon";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const ACCOUNT_TYPES = [
   { value: "checking", label: "Compte Courant", icon: "bank" },
@@ -127,11 +128,14 @@ export default function AccountsPage() {
         ))}
 
         {accounts.length === 0 && !loading && (
-          <div className="sm:col-span-2 text-center py-20 bg-surface-1 border-2 border-dashed border-surface-3 rounded-3xl">
-            <Wallet className="w-12 h-12 text-surface-3 mx-auto mb-4" />
-            <p className="text-text-muted">Aucun compte configuré</p>
-            <Button variant="secondary" className="mt-4" onClick={() => setFormOpen(true)}>Créer mon premier compte</Button>
-          </div>
+          <EmptyState
+            className="sm:col-span-2"
+            icon={<Wallet />}
+            title="Aucun compte configuré"
+            description="Ajoutez un compte courant, un livret ou une carte pour suivre vos soldes."
+            actionLabel="Créer mon premier compte"
+            onAction={() => setFormOpen(true)}
+          />
         )}
       </div>
 

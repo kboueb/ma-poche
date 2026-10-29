@@ -115,11 +115,13 @@ export default function App() {
 
   useEffect(() => {
     const root = window.document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    const isSwitch = root.classList.contains("dark") !== (theme === "dark");
+    // Fondu des couleurs seulement lors d'un changement (pas au premier rendu, pas en permanence)
+    if (isSwitch) root.classList.add("theme-switching");
+    root.classList.toggle("dark", theme === "dark");
+    if (!isSwitch) return;
+    const t = setTimeout(() => root.classList.remove("theme-switching"), 300);
+    return () => clearTimeout(t);
   }, [theme]);
 
   const handleSplashDone = useCallback(() => {
@@ -134,7 +136,7 @@ export default function App() {
   return (
     <>
       {showSplash && <SplashScreen onDone={handleSplashDone} />}
-      <Toaster position="top-center" richColors closeButton />
+      <Toaster position="top-center" richColors closeButton theme={theme} />
       <UpdateBanner />
 
       {/* Main app — renders underneath, visible once splash is gone */}

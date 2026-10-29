@@ -7,18 +7,19 @@ interface EmptyStateProps {
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
+  className?: string;
 }
 
-export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+export function EmptyState({ icon, title, description, actionLabel, onAction, className = "" }: EmptyStateProps) {
   return (
-    <div className="text-center py-16 md:py-20 bg-surface-1 border-2 border-dashed border-surface-3 rounded-3xl px-6">
-      <div className="text-surface-3 mx-auto mb-4 flex justify-center [&>svg]:w-12 [&>svg]:h-12">
+    <div className={`flex flex-col items-center text-center py-14 md:py-16 px-6 bg-surface-1/60 border border-dashed border-surface-4 rounded-3xl ${className}`}>
+      <div className="w-14 h-14 mb-4 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center [&>svg]:w-7 [&>svg]:h-7">
         {icon}
       </div>
       <p className="font-semibold">{title}</p>
-      {description && <p className="text-text-muted text-sm mt-1 max-w-sm mx-auto">{description}</p>}
+      {description && <p className="text-text-muted text-sm mt-1 max-w-sm">{description}</p>}
       {actionLabel && onAction && (
-        <Button variant="secondary" className="mt-4" onClick={onAction}>
+        <Button variant="secondary" className="mt-5" onClick={onAction}>
           {actionLabel}
         </Button>
       )}

@@ -9,6 +9,7 @@ import { Repeat, Pause, Play, Trash2, Calendar, ArrowUpRight, ArrowDownRight } f
 import { toast } from "sonner";
 import type { Transaction } from "@/types";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const RECURRENCE_LABELS: Record<string, string> = {
   weekly: "Chaque semaine",
@@ -67,11 +68,11 @@ export default function RecurringTransactionsPage() {
       />
 
       {parentTransactions.length === 0 ? (
-        <div className="text-center py-20 bg-surface-1 border-2 border-dashed border-surface-3 rounded-3xl">
-          <Repeat className="w-12 h-12 text-surface-3 mx-auto mb-4" />
-          <p className="text-text-muted">Aucune transaction récurrente</p>
-          <p className="text-text-muted text-xs mt-1">Créez-en une depuis le formulaire de transaction</p>
-        </div>
+        <EmptyState
+          icon={<Repeat />}
+          title="Aucune transaction récurrente"
+          description="Créez-en une depuis le formulaire de transaction (loyer, abonnements, salaire…)."
+        />
       ) : (
         <div className="space-y-3">
           {parentTransactions.map((tx) => {

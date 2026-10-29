@@ -6,6 +6,7 @@ import { Landmark, Snowflake, Flame, TrendingDown, CalendarCheck, PiggyBank } fr
 import { Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ComposedChart, Legend } from "recharts";
 import type { Liability } from "@/types";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   CHART_SERIES, chartGridProps, axisTickSmall, axisLineProps,
   compactTick, tooltipStyle, currencyTooltip, legendStyle,
@@ -61,11 +62,11 @@ export default function DebtSimulatorPage() {
       />
 
       {debts.length === 0 ? (
-        <div className="text-center py-20 bg-surface-1 border-2 border-dashed border-surface-3 rounded-3xl">
-          <Landmark className="w-12 h-12 text-surface-3 mx-auto mb-4" />
-          <p className="text-text-muted">Aucune dette à simuler</p>
-          <p className="text-text-muted text-xs mt-1">Ajoutez des passifs dans la page Patrimoine</p>
-        </div>
+        <EmptyState
+          icon={<Landmark />}
+          title="Aucune dette à simuler"
+          description="Ajoutez des passifs (crédit, prêt) dans la page Patrimoine."
+        />
       ) : (
         <>
           {/* Contrôles */}

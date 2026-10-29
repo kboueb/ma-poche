@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, ArrowLeftRight, Briefcase, Plus, Settings, BarChart3, Repeat, CalendarClock, Calculator, PieChart, Building2, Target, Tag, Timer, ReceiptText } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Briefcase, Plus, Settings, BarChart3, Repeat, CalendarClock, Calculator, PieChart, Building2, Target, Tag, Timer, ReceiptText, Users, FileSignature } from "lucide-react";
 import { useAccountsStore } from "@/stores/useAccountsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useUIStore } from "@/stores/useUIStore";
@@ -10,6 +10,8 @@ const MORE_SECTIONS: Array<{ title: string; items: Array<{ to: string; Icon: typ
   {
     title: "Activité",
     items: [
+      { to: "/clients", Icon: Users, label: "Clients" },
+      { to: "/devis", Icon: FileSignature, label: "Devis" },
       { to: "/temps", Icon: Timer, label: "Temps" },
       { to: "/factures", Icon: ReceiptText, label: "Factures" },
       { to: "/objectifs", Icon: Target, label: "Objectifs" },

@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ArrowLeftRight, PieChart, Building2, Target, Settings, LogOut, Sun, Moon, Tag, Wallet, BarChart3, Repeat, CalendarClock, Calculator, Briefcase, Search, Timer, ReceiptText } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, PieChart, Building2, Target, Settings, LogOut, Sun, Moon, Tag, Wallet, BarChart3, Repeat, CalendarClock, Calculator, Briefcase, Search, Timer, ReceiptText, Users, FileSignature } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { useUIStore } from "@/stores/useUIStore";
@@ -29,6 +29,8 @@ const NAV_SECTIONS: Array<{ title: string; items: Array<{ to: string; icon: type
     title: "Activité",
     items: [
       { to: "/missions", icon: Briefcase, label: "Missions", tourClass: "" },
+      { to: "/clients", icon: Users, label: "Clients", tourClass: "" },
+      { to: "/devis", icon: FileSignature, label: "Devis", tourClass: "" },
       { to: "/temps", icon: Timer, label: "Temps", tourClass: "" },
       { to: "/factures", icon: ReceiptText, label: "Factures", tourClass: "" },
       { to: "/objectifs", icon: Target, label: "Objectifs", tourClass: "tour-nav-objectifs" },

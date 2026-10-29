@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, Repeat, Wallet, PieChart, Building2,
   BarChart3, Target, Tag, Settings, Plus, Search, ArrowUpRight, ArrowDownRight,
-  Briefcase, Timer, ReceiptText,
+  Briefcase, Timer, ReceiptText, Users, FileSignature,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useUIStore } from "@/stores/useUIStore";
@@ -19,7 +19,9 @@ const NAV_ACTIONS = [
   { to: "/transactions", label: "Transactions", keywords: "transaction depenses depenses", Icon: ArrowLeftRight },
   { to: "/missions", label: "Missions", keywords: "mission projet client consultance freelance", Icon: Briefcase },
   { to: "/temps", label: "Temps de travail", keywords: "temps timer horaire heures facturation", Icon: Timer },
-  { to: "/factures", label: "Factures", keywords: "facture billing devis paiement", Icon: ReceiptText },
+  { to: "/factures", label: "Factures", keywords: "facture billing paiement", Icon: ReceiptText },
+  { to: "/clients", label: "Clients", keywords: "client contact entreprise siret", Icon: Users },
+  { to: "/devis", label: "Devis", keywords: "devis proposition offre chiffrage", Icon: FileSignature },
   { to: "/recurrentes", label: "Transactions récurrentes", keywords: "recurrent abonnement", Icon: Repeat },
   { to: "/accounts", label: "Comptes", keywords: "compte banque", Icon: Wallet },
   { to: "/budgets", label: "Budgets", keywords: "budget limite", Icon: PieChart },

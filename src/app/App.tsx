@@ -40,6 +40,8 @@ const DebtSimulatorPage = lazy(() => import("@/features/assets/DebtSimulatorPage
 const ProjectsPage = lazy(() => import("@/features/projects/ProjectsPage"));
 const TimePage = lazy(() => import("@/features/time/TimePage"));
 const InvoicesPage = lazy(() => import("@/features/invoices/InvoicesPage"));
+const ClientsPage = lazy(() => import("@/features/clients/ClientsPage"));
+const QuotesPage = lazy(() => import("@/features/quotes/QuotesPage"));
 
 function PageLoader() {
   return (
@@ -73,6 +75,8 @@ function AnimatedRoutes() {
           <Route path="/missions" element={<ProjectsPage />} />
           <Route path="/temps" element={<TimePage />} />
           <Route path="/factures" element={<InvoicesPage />} />
+          <Route path="/clients" element={<ClientsPage />} />
+          <Route path="/devis" element={<QuotesPage />} />
           <Route path="/objectifs" element={<GoalsPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/categories" element={<CategoriesPage />} />

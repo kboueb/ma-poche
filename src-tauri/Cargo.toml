@@ -1,6 +1,6 @@
 [package]
 name = "mapoche"
-version = "1.7.0"
+version = "1.8.0"
 description = "maPoche — Gestion financière personnelle et patrimoine"
 edition = "2021"
 

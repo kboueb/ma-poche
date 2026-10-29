@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, AlertTriangle, Trash2, TrendingUp, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Plus, AlertTriangle, Trash2, TrendingUp, ChevronLeft, ChevronRight, RefreshCw, PieChart } from "lucide-react";
 import { parseISO, isWithinInterval, getDate, getDaysInMonth, addMonths, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonCards } from "@/components/ui/Skeleton";
 
 function BudgetGauge({ spent, budget, label, color, alert, onRemove, rolloverAmount }: { spent: number; budget: number; label: string; color: string; alert: number; onRemove: () => void; rolloverAmount?: number }) {
   const effectiveBudget = budget + (rolloverAmount || 0);
@@ -41,7 +44,7 @@ function BudgetGauge({ spent, budget, label, color, alert, onRemove, rolloverAmo
         </div>
         <div className="flex items-center gap-2">
           {isWarning && <AlertTriangle className="w-4 h-4 text-amber-500" />}
-          <button onClick={onRemove} className="p-1 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all">
+          <button onClick={onRemove} className="p-1 text-text-muted hover:text-rose-400 md:opacity-0 md:group-hover:opacity-100 transition-all">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -136,32 +139,32 @@ export default function BudgetsPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Budgets</h1>
-          <p className="text-text-muted text-sm mt-1">Gérez vos limites de dépenses</p>
-        </div>
-        
-        <div className="flex items-center gap-2 bg-surface-1 border border-surface-3 rounded-xl p-1 shrink-0 w-fit">
-          <button 
-            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-            className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <span className="text-sm font-semibold min-w-[110px] text-center capitalize">
-            {formatDate(currentDate, "MMMM yyyy")}
-          </span>
-          <button 
-            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-            className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-
-        <Button icon={<Plus className="w-4 h-4" />} onClick={() => setFormOpen(true)}>Nouveau budget</Button>
-      </div>
+      <PageHeader
+        title="Budgets"
+        subtitle="Gérez vos limites de dépenses"
+        actions={
+          <>
+            <div className="flex items-center gap-2 bg-surface-1 border border-surface-3 rounded-xl p-1 shrink-0 w-fit">
+              <button 
+                onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+                className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <span className="text-sm font-semibold min-w-[110px] text-center capitalize">
+                {formatDate(currentDate, "MMMM yyyy")}
+              </span>
+              <button 
+                onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+                className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+            <Button icon={<Plus className="w-4 h-4" />} onClick={() => setFormOpen(true)}>Nouveau budget</Button>
+          </>
+        }
+      />
 
       <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5 flex items-center gap-6">
         <div className="flex-1">
@@ -179,14 +182,15 @@ export default function BudgetsPage() {
       </div>
 
       {loading ? (
-        <div className="grid sm:grid-cols-2 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-36 bg-surface-1 rounded-2xl animate-pulse" />)}
-        </div>
+        <SkeletonCards count={4} cardClass="h-36" />
       ) : budgetData.length === 0 ? (
-        <div className="text-center py-20 text-text-muted">
-          <p>Aucun budget configuré</p>
-          <Button variant="secondary" className="mt-4" onClick={() => setFormOpen(true)} icon={<Plus className="w-4 h-4" />}>Créer un budget</Button>
-        </div>
+        <EmptyState
+          icon={<PieChart className="w-12 h-12" />}
+          title="Aucun budget configuré"
+          description="Fixez des limites mensuelles par catégorie pour garder le cap."
+          actionLabel="Créer un budget"
+          onAction={() => setFormOpen(true)}
+        />
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
           {budgetData.map((b) => (

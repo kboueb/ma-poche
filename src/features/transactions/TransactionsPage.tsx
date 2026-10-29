@@ -1,16 +1,22 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { useAccountsStore } from "@/stores/useAccountsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
+import { useProjectsStore } from "@/stores/useProjectsStore";
 import { formatCurrency, convertToBase } from "@/lib/utils/currency";
 import { formatRelative } from "@/lib/utils/dates";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
-import { Plus, Search, ArrowUpRight, ArrowDownRight, ArrowLeftRight, Trash2, Check, Upload, Edit2, Repeat, Tag, X } from "lucide-react";
+import { Plus, Search, ArrowUpRight, ArrowDownRight, ArrowLeftRight, Trash2, Check, Upload, Edit2, Repeat, Tag, X, Paperclip, Briefcase } from "lucide-react";
 import TransactionForm from "./TransactionForm";
 import TransactionImport from "./TransactionImport";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonList } from "@/components/ui/Skeleton";
+import { getAttachmentCounts } from "@/lib/services/attachmentService";
 import type { Transaction } from "@/types";
 
 const FLOW_OPTIONS = [
@@ -42,6 +48,7 @@ export default function TransactionsPage() {
   const { transactions, loading, fetch, remove, update } = useTransactionsStore();
   const { accounts, fetch: fetchAcc } = useAccountsStore();
   const { categories, fetch: fetchCat } = useCategoriesStore();
+  const { projects, fetch: fetchProjects } = useProjectsStore();
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -51,8 +58,33 @@ export default function TransactionsPage() {
   const [tagFilter, setTagFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightId = searchParams.get("highlight");
+  const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [attachmentCounts, setAttachmentCounts] = useState<Map<string, number>>(new Map());
 
-  useEffect(() => { fetch(); fetchAcc(); fetchCat(); }, [fetch, fetchAcc, fetchCat]);
+  useEffect(() => { fetch(); fetchAcc(); fetchCat(); fetchProjects(); }, [fetch, fetchAcc, fetchCat, fetchProjects]);
+
+  // Compteurs de justificatifs (1 seule requête pour toute la liste)
+  useEffect(() => {
+    if (transactions.length === 0) { setAttachmentCounts(new Map()); return; }
+    getAttachmentCounts(transactions.map((t) => t.id))
+      .then(setAttachmentCounts)
+      .catch(() => {});
+  }, [transactions]);
+
+  // Highlight depuis la palette ⌘K : scroll + anneau temporaire
+  useEffect(() => {
+    if (!highlightId || transactions.length === 0) return;
+    const el = rowRefs.current.get(highlightId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const t = setTimeout(() => {
+        setSearchParams({}, { replace: true });
+      }, 2500);
+      return () => clearTimeout(t);
+    }
+  }, [highlightId, transactions, setSearchParams]);
 
   // Collect all unique tags from transactions
   const allTags = useMemo(() => {
@@ -121,17 +153,16 @@ export default function TransactionsPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Transactions</h1>
-          <p className="text-text-muted text-sm mt-1">{filtered.length} transaction{filtered.length > 1 ? "s" : ""}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" icon={<Upload className="w-4 h-4" />} onClick={() => setImportOpen(true)}>Importer CSV</Button>
-          <Button icon={<Plus className="w-4 h-4" />} onClick={() => setFormOpen(true)}>Ajouter</Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Transactions"
+        subtitle={`${filtered.length} transaction${filtered.length > 1 ? "s" : ""}`}
+        actions={
+          <>
+            <Button variant="secondary" icon={<Upload className="w-4 h-4" />} onClick={() => setImportOpen(true)}>Importer CSV</Button>
+            <Button icon={<Plus className="w-4 h-4" />} onClick={() => setFormOpen(true)}>Ajouter</Button>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -170,14 +201,15 @@ export default function TransactionsPage() {
 
       {/* Transaction list grouped by date */}
       {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-14 bg-surface-1 rounded-xl animate-pulse" />)}
-        </div>
+        <SkeletonList rows={8} />
       ) : grouped.length === 0 ? (
-        <div className="text-center py-20">
-          <p className="text-text-muted">Aucune transaction trouvée</p>
-          <Button variant="secondary" className="mt-4" onClick={() => setFormOpen(true)} icon={<Plus className="w-4 h-4" />}>Ajouter la première</Button>
-        </div>
+        <EmptyState
+          icon={<ArrowLeftRight className="w-12 h-12" />}
+          title="Aucune transaction trouvée"
+          description="Ajoutez votre première transaction ou modifiez les filtres."
+          actionLabel="Ajouter la première"
+          onAction={() => setFormOpen(true)}
+        />
       ) : (
         <div className="space-y-6">
           {grouped.map(([date, txs]) => (
@@ -187,7 +219,8 @@ export default function TransactionsPage() {
                 {txs.map((t) => (
                   <div
                     key={t.id}
-                    className={`flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors cursor-pointer group ${selected.has(t.id) ? "bg-brand-500/5" : ""}`}
+                    ref={(el) => { if (el) rowRefs.current.set(t.id, el); else rowRefs.current.delete(t.id); }}
+                    className={`flex items-center gap-3 px-4 py-3 hover:bg-surface-2 transition-colors cursor-pointer group ${selected.has(t.id) ? "bg-brand-500/5" : ""} ${highlightId === t.id ? "ring-2 ring-brand-500 bg-brand-500/10 rounded-xl" : ""}`}
                     onClick={(e) => {
                       if ((e.target as HTMLElement).closest("button.edit-btn")) return;
                       toggleSelect(t.id);
@@ -200,10 +233,31 @@ export default function TransactionsPage() {
                       <p className="text-sm font-medium truncate flex items-center gap-1.5">
                         {t.description || "—"}
                         {t.recurrence_rule && <Repeat className="w-3 h-3 text-brand-400 shrink-0" />}
+                        {t.project_id && (() => {
+                          const proj = projects.find((p) => p.id === t.project_id);
+                          return proj ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium bg-brand-500/10 text-brand-400 border border-brand-500/20 rounded shrink-0 truncate max-w-[140px]" title={`${proj.client_name} — ${proj.name}`}>
+                              <Briefcase className="w-2.5 h-2.5 shrink-0" />{proj.name}
+                            </span>
+                          ) : null;
+                        })()}
+                        {(attachmentCounts.get(t.id) || 0) > 0 && (
+                          <button
+                            className="edit-btn inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-medium bg-surface-3 hover:bg-brand-500/20 hover:text-brand-400 rounded text-text-muted transition-colors shrink-0"
+                            title="Voir les justificatifs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTx(t);
+                            }}
+                          >
+                            <Paperclip className="w-2.5 h-2.5" />
+                            {attachmentCounts.get(t.id)}
+                          </button>
+                        )}
                       </p>
                       <p className="text-[11px] text-text-muted truncate">
                         {t.category?.name || "Non catégorisé"} · {t.account?.name}
-                        {t.is_reviewed && <span className="ml-1 text-emerald-400">✓</span>}
+                        {t.is_reviewed && <Check className="w-3 h-3 ml-1 text-emerald-400 inline" />}
                       </p>
                       {t.tags && t.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
@@ -218,7 +272,7 @@ export default function TransactionsPage() {
                         {t.flow === "income" ? "+" : t.flow === "expense" ? "-" : ""}{formatCurrency(convertToBase(Number(t.amount), t.account?.currency))}
                       </p>
                       <button 
-                        className="edit-btn p-2 text-text-muted hover:text-brand-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="edit-btn p-2 text-text-muted hover:text-brand-400 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditingTx(t);

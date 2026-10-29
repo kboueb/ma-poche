@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { translateError } from "@/lib/utils/errors";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Mail, Lock, ArrowRight, ChevronRight, Eye, EyeOff, Send, CheckCircle } from "lucide-react";
+import { Mail, Lock, ArrowRight, ChevronRight, Eye, EyeOff, Send, CheckCircle, Wallet, Target, Landmark, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
 // ─── Illustration components ───────────────────────────────────────────────
@@ -63,7 +63,7 @@ function IllustrationGoals() {
       </circle>
       {/* Goal tag */}
       <rect x="155" y="55" width="85" height="26" rx="8" fill="white" opacity="0.9" />
-      <text x="197" y="72" textAnchor="middle" fontSize="10" fill="#d97706" fontWeight="700">Objectif 🎯</text>
+      <text x="197" y="72" textAnchor="middle" fontSize="10" fill="#d97706" fontWeight="700">Objectif</text>
     </svg>
   );
 }
@@ -100,7 +100,7 @@ function IllustrationPatrimoine() {
 
 const SLIDES = [
   {
-    emoji: "💰",
+    Icon: Wallet,
     title: "Prenez le contrôle\nde votre argent",
     subtitle: "Suivez vos revenus, dépenses et épargne en temps réel. Chaque euro compte.",
     illustration: <IllustrationBudget />,
@@ -110,7 +110,7 @@ const SLIDES = [
     accent: "#10b981",
   },
   {
-    emoji: "🎯",
+    Icon: Target,
     title: "Atteignez vos\nobjectifs financiers",
     subtitle: "Voyage, maison, retraite... Définissez vos rêves et regardez-les devenir réalité.",
     illustration: <IllustrationGoals />,
@@ -120,7 +120,7 @@ const SLIDES = [
     accent: "#f59e0b",
   },
   {
-    emoji: "🏦",
+    Icon: Landmark,
     title: "Construisez\nvotre patrimoine",
     subtitle: "Immobilier, actions, épargne… Visualisez votre richesse et faites-la grandir.",
     illustration: <IllustrationPatrimoine />,
@@ -141,6 +141,7 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -148,8 +149,13 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccess("");
     const err = isLogin ? await login(email, password) : await register(email, password);
-    if (err) setError(err);
+    if (err) {
+      setError(err);
+    } else if (!isLogin) {
+      setSuccess("Compte créé ! Vérifie ta boîte mail pour confirmer ton adresse.");
+    }
     setLoading(false);
   };
 
@@ -161,7 +167,12 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
       redirectTo: `${window.location.origin}/reset-password`,
     });
     if (error) {
-      setError(translateError(error.message));
+      // Anti-énumération : ne jamais révéler si l'email existe ou non
+      if (error.message.includes("Unable to find user")) {
+        setResetSent(true);
+      } else {
+        setError(translateError(error.message));
+      }
     } else {
       setResetSent(true);
     }
@@ -179,8 +190,9 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
         </button>
 
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold">
-            {resetSent ? "Email envoyé 📩" : "Mot de passe oublié ?"}
+          <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+            {resetSent && <Mail className="w-6 h-6 text-brand-400" />}
+            {resetSent ? "Email envoyé" : "Mot de passe oublié ?"}
           </h2>
           <p className="text-text-muted text-sm mt-1">
             {resetSent
@@ -240,7 +252,7 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
 
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold">
-          {isLogin ? "Content de te revoir 👋" : "Rejoins maPoche 🚀"}
+          {isLogin ? "Content de te revoir" : "Rejoins maPoche"}
         </h2>
         <p className="text-text-muted text-sm mt-1">
           {isLogin ? "Connecte-toi à ton espace" : "Crée ton compte gratuitement"}
@@ -279,6 +291,11 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
             {error}
           </div>
         )}
+        {success && (
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs font-medium text-center">
+            {success}
+          </div>
+        )}
         <Button type="submit" loading={loading} className="w-full" size="lg" icon={<ArrowRight className="w-4 h-4" />}>
           {isLogin ? "Connexion" : "Créer mon compte"}
         </Button>
@@ -286,7 +303,7 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
 
       {isLogin && (
         <button
-          onClick={() => { setForgotPassword(true); setError(""); }}
+          onClick={() => { setForgotPassword(true); setError(""); setSuccess(""); }}
           className="w-full mt-3 text-center text-xs text-text-muted hover:text-brand-400 underline underline-offset-4 transition-colors"
         >
           Mot de passe oublié ?
@@ -294,7 +311,7 @@ function AuthForm({ onBack, initialMode = "login" }: { onBack: () => void; initi
       )}
 
       <button
-        onClick={() => { setIsLogin(!isLogin); setError(""); }}
+          onClick={() => { setIsLogin(!isLogin); setError(""); setSuccess(""); }}
         className="w-full mt-4 text-center text-xs text-text-muted hover:text-brand-400 underline underline-offset-4 transition-colors"
       >
         {isLogin ? "Pas de compte ? S'inscrire" : "Déjà inscrit ? Se connecter"}
@@ -378,12 +395,12 @@ export default function LoginPage() {
             {slide.illustration}
           </div>
 
-          {/* Emoji badge */}
+          {/* Icon badge */}
           <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl text-3xl mb-4 shadow-lg"
-            style={{ background: `${slide.accent}20`, border: `2px solid ${slide.accent}40` }}
+            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 shadow-lg"
+            style={{ background: `${slide.accent}20`, border: `2px solid ${slide.accent}40`, color: slide.accent }}
           >
-            {slide.emoji}
+            <slide.Icon className="w-7 h-7" />
           </div>
 
           <h1
@@ -467,8 +484,8 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <p className="text-[11px] text-text-muted">
-                🔒 Gratuit · Sécurisé · Aucune CB requise
+              <p className="text-[11px] text-text-muted flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" /> Gratuit · Sécurisé · Aucune CB requise
               </p>
             </div>
           )}

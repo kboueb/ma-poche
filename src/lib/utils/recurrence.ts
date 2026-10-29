@@ -48,7 +48,6 @@ export async function processRecurrences(transactions: Transaction[]): Promise<b
           recurrence_rule: parent.recurrence_rule,
           recurrence_parent_id: parent.id,
           is_reviewed: false,
-          is_active: true,
         });
         existingDates.add(dateStr);
       }

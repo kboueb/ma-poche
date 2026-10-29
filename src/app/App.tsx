@@ -1,14 +1,21 @@
 import { Suspense, lazy, useEffect, useState, useCallback } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Toaster } from "sonner";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
+import CommandPalette from "@/components/layout/CommandPalette";
+import ShortcutsHelp from "@/components/layout/ShortcutsHelp";
+import GlobalTransactionModal from "@/components/layout/GlobalTransactionModal";
+import TimerWidget from "@/components/layout/TimerWidget";
+import { initGlobalShortcuts } from "@/stores/useUIStore";
 import { GuidedTour } from "@/components/layout/GuidedTour";
 import { SplashScreen } from "@/components/ui/SplashScreen";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { Logo } from "@/components/ui/Logo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import UpdateBanner from "@/components/layout/UpdateBanner";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import LoginPage from "./LoginPage";
 import ResetPasswordPage from "./ResetPasswordPage";
@@ -24,6 +31,11 @@ const AccountsPage = lazy(() => import("@/features/accounts/AccountsPage"));
 const SettingsPage = lazy(() => import("@/features/settings/SettingsPage"));
 const ReportsPage = lazy(() => import("@/features/analytics/ReportsPage"));
 const RecurringTransactionsPage = lazy(() => import("@/features/transactions/RecurringTransactionsPage"));
+const SchedulePage = lazy(() => import("@/features/schedule/SchedulePage"));
+const DebtSimulatorPage = lazy(() => import("@/features/assets/DebtSimulatorPage"));
+const ProjectsPage = lazy(() => import("@/features/projects/ProjectsPage"));
+const TimePage = lazy(() => import("@/features/time/TimePage"));
+const InvoicesPage = lazy(() => import("@/features/invoices/InvoicesPage"));
 
 function PageLoader() {
   return (
@@ -33,9 +45,47 @@ function PageLoader() {
   );
 }
 
+function AnimatedRoutes() {
+  const location = useLocation();
+  const reduceMotion = useReducedMotion();
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
+      >
+        <Routes location={location}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/budgets" element={<BudgetsPage />} />
+          <Route path="/patrimoine" element={<PatrimoinePage />} />
+          <Route path="/rapports" element={<ReportsPage />} />
+          <Route path="/recurrentes" element={<RecurringTransactionsPage />} />
+          <Route path="/echeancier" element={<SchedulePage />} />
+          <Route path="/simulateur" element={<DebtSimulatorPage />} />
+          <Route path="/missions" element={<ProjectsPage />} />
+          <Route path="/temps" element={<TimePage />} />
+          <Route path="/factures" element={<InvoicesPage />} />
+          <Route path="/objectifs" element={<GoalsPage />} />
+          <Route path="/accounts" element={<AccountsPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 function AuthenticatedLayout() {
   // Auto-refresh data when PWA comes back to foreground
   useRefreshOnFocus();
+
+  // Raccourcis clavier globaux (⌘K, N, ?)
+  useEffect(() => initGlobalShortcuts(), []);
 
   return (
     <div className="min-h-screen flex">
@@ -43,22 +93,14 @@ function AuthenticatedLayout() {
       <Sidebar />
       <main className="flex-1 md:ml-64 pb-20 md:pb-0">
         <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/transactions" element={<TransactionsPage />} />
-            <Route path="/budgets" element={<BudgetsPage />} />
-            <Route path="/patrimoine" element={<PatrimoinePage />} />
-            <Route path="/rapports" element={<ReportsPage />} />
-            <Route path="/recurrentes" element={<RecurringTransactionsPage />} />
-            <Route path="/objectifs" element={<GoalsPage />} />
-            <Route path="/accounts" element={<AccountsPage />} />
-            <Route path="/categories" element={<CategoriesPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <AnimatedRoutes />
         </Suspense>
       </main>
       <BottomNav />
+      <CommandPalette />
+      <ShortcutsHelp />
+      <GlobalTransactionModal />
+      <TimerWidget />
     </div>
   );
 }
@@ -93,6 +135,7 @@ export default function App() {
     <>
       {showSplash && <SplashScreen onDone={handleSplashDone} />}
       <Toaster position="top-center" richColors closeButton />
+      <UpdateBanner />
 
       {/* Main app — renders underneath, visible once splash is gone */}
       <div

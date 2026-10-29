@@ -8,8 +8,11 @@ import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChar
 import { parseISO, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Transaction } from "@/types";
-
-const CAT_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#f43f5e", "#8b5cf6", "#3b82f6", "#06b6d4", "#ec4899", "#94a3b8"];
+import { PageHeader } from "@/components/ui/PageHeader";
+import {
+  CHART_SERIES, chartColor, chartGridProps, axisTickSmall, axisLineProps,
+  compactTick, tooltipStyle, currencyTooltip, legendStyle,
+} from "@/lib/charts";
 
 interface MonthSummary {
   label: string;
@@ -105,21 +108,21 @@ export default function ReportsPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Rapport mensuel</h1>
-          <p className="text-text-muted text-sm mt-1">Comparaison mois par mois</p>
-        </div>
-        <div className="flex items-center gap-2 bg-surface-1 border border-surface-3 rounded-xl p-1 shrink-0 w-fit">
-          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <span className="text-sm font-semibold min-w-[140px] text-center capitalize">{current.label}</span>
-          <button onClick={() => setCurrentDate(subMonths(currentDate, -1))} className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary">
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Rapport mensuel"
+        subtitle="Comparaison mois par mois"
+        actions={
+          <div className="flex items-center gap-2 bg-surface-1 border border-surface-3 rounded-xl p-1 shrink-0 w-fit">
+            <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="text-sm font-semibold min-w-[140px] text-center capitalize">{current.label}</span>
+            <button onClick={() => setCurrentDate(subMonths(currentDate, -1))} className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        }
+      />
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -159,16 +162,16 @@ export default function ReportsPage() {
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={barData} barCategoryGap="25%">
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-3)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <CartesianGrid {...chartGridProps} />
+              <XAxis dataKey="name" tick={axisTickSmall} {...axisLineProps} />
+              <YAxis tick={axisTickSmall} {...axisLineProps} tickFormatter={compactTick} />
               <Tooltip
-                contentStyle={{ backgroundColor: "var(--surface-1)", border: "1px solid var(--surface-3)", borderRadius: 12, fontSize: 12, color: "var(--text-primary)" }}
-                formatter={(v: number) => formatCurrency(v)}
+                contentStyle={tooltipStyle}
+                formatter={currencyTooltip}
               />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="previous" name={format(subMonths(currentDate, 1), "MMM yyyy", { locale: fr })} fill="#94a3b8" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="current" name={format(currentDate, "MMM yyyy", { locale: fr })} fill="#6366f1" radius={[4, 4, 0, 0]} />
+              <Legend wrapperStyle={legendStyle} />
+              <Bar dataKey="previous" name={format(subMonths(currentDate, 1), "MMM yyyy", { locale: fr })} fill={CHART_SERIES.secondary} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="current" name={format(currentDate, "MMM yyyy", { locale: fr })} fill={CHART_SERIES.primary} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -185,7 +188,7 @@ export default function ReportsPage() {
                 <div key={cat.name}>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-sm font-medium flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CAT_COLORS[i % CAT_COLORS.length] }} />
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: chartColor(i) }} />
                       {cat.name}
                     </span>
                     <span className="text-xs text-text-muted font-mono">
@@ -198,7 +201,7 @@ export default function ReportsPage() {
                         <div className="h-full rounded-full bg-surface-4" style={{ width: `${(cat.previous / maxVal) * 100}%` }} />
                       </div>
                       <div className="h-2.5 bg-surface-3 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${(cat.current / maxVal) * 100}%`, backgroundColor: CAT_COLORS[i % CAT_COLORS.length] }} />
+                        <div className="h-full rounded-full" style={{ width: `${(cat.current / maxVal) * 100}%`, backgroundColor: chartColor(i) }} />
                       </div>
                     </div>
                     <div className="text-right shrink-0 w-28">

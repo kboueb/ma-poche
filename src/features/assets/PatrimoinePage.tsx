@@ -7,27 +7,33 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, Building2, TrendingUp, TrendingDown, CreditCard, Trash2 } from "lucide-react";
+import { Plus, Building2, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import type { Asset, Liability, PatrimoineSnapshot } from "@/types";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/ui/PageHeader";
+import AppIcon from "@/components/ui/AppIcon";
+import {
+  CHART_SERIES, chartGridProps, axisTickSmall, axisLineProps,
+  compactTick, tooltipStyle, currencyTooltip,
+} from "@/lib/charts";
 
 const ASSET_TYPES = [
-  { value: "real_estate", label: "🏠 Immobilier" },
-  { value: "stock", label: "📈 Actions" },
-  { value: "etf", label: "📊 ETF" },
-  { value: "crypto", label: "₿ Crypto" },
-  { value: "savings_account", label: "🏦 Épargne" },
-  { value: "life_insurance", label: "🛡️ Assurance vie" },
-  { value: "other", label: "📦 Autre" },
+  { value: "real_estate", label: "Immobilier", icon: "house" },
+  { value: "stock", label: "Actions", icon: "trending" },
+  { value: "etf", label: "ETF", icon: "chart" },
+  { value: "crypto", label: "Crypto", icon: "bitcoin" },
+  { value: "savings_account", label: "Épargne", icon: "bank" },
+  { value: "life_insurance", label: "Assurance vie", icon: "shield" },
+  { value: "other", label: "Autre", icon: "package" },
 ];
 
 const LIABILITY_TYPES = [
-  { value: "mortgage", label: "🏠 Crédit immo" },
-  { value: "car_loan", label: "🚗 Crédit auto" },
-  { value: "consumer_credit", label: "💳 Crédit conso" },
-  { value: "student_loan", label: "🎓 Prêt étudiant" },
-  { value: "other", label: "📦 Autre" },
+  { value: "mortgage", label: "Crédit immo", icon: "house" },
+  { value: "car_loan", label: "Crédit auto", icon: "car" },
+  { value: "consumer_credit", label: "Crédit conso", icon: "card" },
+  { value: "student_loan", label: "Prêt étudiant", icon: "graduation" },
+  { value: "other", label: "Autre", icon: "package" },
 ];
 
 const COLORS: Record<string, string> = {
@@ -152,7 +158,7 @@ export default function PatrimoinePage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Patrimoine</h1>
+      <PageHeader title="Patrimoine" subtitle="Actifs, passifs et valeur nette" />
 
       {/* Net worth */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -178,31 +184,29 @@ export default function PatrimoinePage() {
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={history}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-3)" vertical={false} />
+              <CartesianGrid {...chartGridProps} />
               <XAxis 
                 dataKey="recorded_at" 
-                tick={{ fontSize: 10, fill: "var(--text-muted)" }} 
-                axisLine={false} 
-                tickLine={false}
+                tick={axisTickSmall} 
+                {...axisLineProps}
                 tickFormatter={(d) => new Date(d).toLocaleDateString('fr-FR', { month: 'short' })}
               />
               <YAxis 
-                tick={{ fontSize: 10, fill: "var(--text-muted)" }} 
-                axisLine={false} 
-                tickLine={false}
-                tickFormatter={(v) => `${(v/1000).toFixed(0)}k`}
+                tick={axisTickSmall} 
+                {...axisLineProps}
+                tickFormatter={compactTick}
               />
               <Tooltip 
-                formatter={(v: number) => formatCurrency(v)}
-                contentStyle={{ backgroundColor: "var(--surface-1)", border: "1px solid var(--surface-3)", borderRadius: 12, fontSize: 12 }}
+                formatter={currencyTooltip}
+                contentStyle={tooltipStyle}
                 itemStyle={{ color: "var(--brand-400)" }}
               />
               <Line 
                 type="monotone" 
                 dataKey="net_worth" 
-                stroke="#6366f1" 
+                stroke={CHART_SERIES.primary} 
                 strokeWidth={3} 
-                dot={{ fill: "#6366f1", strokeWidth: 2, r: 4, stroke: "var(--surface-1)" }} 
+                dot={{ fill: CHART_SERIES.primary, strokeWidth: 2, r: 4, stroke: "var(--surface-1)" }} 
                 activeDot={{ r: 6, strokeWidth: 0 }}
               />
             </LineChart>
@@ -219,7 +223,7 @@ export default function PatrimoinePage() {
                 <Pie data={donut} dataKey="value" cx="50%" cy="50%" innerRadius={55} outerRadius={80} strokeWidth={0}>
                   {donut.map((d, i) => <Cell key={i} fill={d.color} />)}
                 </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ backgroundColor: "var(--surface-2)", border: "1px solid var(--surface-4)", borderRadius: 12, fontSize: 12, color: "var(--text-primary)" }} />
+                <Tooltip formatter={currencyTooltip} contentStyle={tooltipStyle} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -247,19 +251,19 @@ export default function PatrimoinePage() {
           const pv = a.purchase_price ? ((Number(a.current_value) - Number(a.purchase_price)) / Number(a.purchase_price)) * 100 : null;
           return (
             <div key={a.id} className="bg-surface-1 border border-surface-3 rounded-2xl p-4 flex items-center gap-4 group">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ backgroundColor: `${COLORS[a.type]}20`, color: COLORS[a.type] }}>
-                {ASSET_TYPES.find((t) => t.value === a.type)?.label.slice(0, 2)}
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${COLORS[a.type]}20`, color: COLORS[a.type] }}>
+                <AppIcon icon={ASSET_TYPES.find((t) => t.value === a.type)?.icon} className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{a.name}</p>
-                <p className="text-[11px] text-text-muted">{ASSET_TYPES.find((t) => t.value === a.type)?.label.slice(2)}</p>
+                <p className="text-[11px] text-text-muted">{ASSET_TYPES.find((t) => t.value === a.type)?.label}</p>
               </div>
               <div className="text-right flex items-center gap-4">
                 <div>
                   <p className="text-sm font-mono font-bold">{formatCurrency(convertToBase(Number(a.current_value), a.currency))}</p>
                   {pv !== null && <p className={`text-[11px] font-mono ${pv >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{pv >= 0 ? "+" : ""}{pv.toFixed(1)}%</p>}
                 </div>
-                <button onClick={() => removeItem("assets", a.id)} className="p-2 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all">
+                <button onClick={() => removeItem("assets", a.id)} className="p-2 text-text-muted hover:text-rose-400 md:opacity-0 md:group-hover:opacity-100 transition-all">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -276,7 +280,7 @@ export default function PatrimoinePage() {
       <div className="space-y-2">
         {liabilities.map((l) => (
           <div key={l.id} className="bg-surface-1 border border-surface-3 rounded-2xl p-4 flex items-center gap-4 group">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-500/10 text-rose-400"><CreditCard className="w-5 h-5" /></div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-500/10 text-rose-400"><AppIcon icon={LIABILITY_TYPES.find((t) => t.value === l.type)?.icon || "card"} className="w-5 h-5" /></div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{l.name}</p>
               <p className="text-[11px] text-text-muted">{l.monthly_payment ? `${formatCurrency(Number(l.monthly_payment))}/mois` : ""} {l.interest_rate ? `· ${l.interest_rate}%` : ""}</p>
@@ -286,7 +290,7 @@ export default function PatrimoinePage() {
                 <p className="text-sm font-mono font-bold text-rose-400">{formatCurrency(Number(l.remaining_amount))}</p>
                 <p className="text-[11px] text-text-muted">/{formatCurrency(Number(l.initial_amount || 0))}</p>
               </div>
-              <button onClick={() => removeItem("liabilities", l.id)} className="p-2 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all">
+              <button onClick={() => removeItem("liabilities", l.id)} className="p-2 text-text-muted hover:text-rose-400 md:opacity-0 md:group-hover:opacity-100 transition-all">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>

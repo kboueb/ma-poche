@@ -7,6 +7,7 @@ import { User, Shield, Download, Trash2, Globe, Moon, Sun, CheckCircle2, Compass
 import { useThemeStore } from "@/stores/useThemeStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useRestartTour } from "@/components/layout/GuidedTour";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -19,9 +20,23 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [appVersion, setAppVersion] = useState("…");
 
   useEffect(() => {
     fetchTx();
+    (async () => {
+      try {
+        const { isTauriRuntime } = await import("@/lib/tauri");
+        if (isTauriRuntime()) {
+          const { getVersion } = await import("@tauri-apps/api/app");
+          setAppVersion(await getVersion());
+          return;
+        }
+      } catch {
+        // ignore → fallback ci-dessous
+      }
+      setAppVersion(import.meta.env.PACKAGE_VERSION || "web");
+    })();
   }, [fetchTx]);
 
   const handleExportCSV = () => {
@@ -43,9 +58,15 @@ export default function SettingsPage() {
         t.note || ""
       ]);
 
+      // Anti formula-injection (OWASP) : neutralise les cellules interprétées par Excel/Sheets
+      const escapeFormula = (cell: unknown): string => {
+        const s = String(cell).replace(/"/g, '""');
+        return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+      };
+
       const csvContent = [
         headers.join(","),
-        ...rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        ...rows.map(r => r.map(cell => `"${escapeFormula(cell)}"`).join(","))
       ].join("\n");
 
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -73,10 +94,7 @@ export default function SettingsPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Réglages</h1>
-        <p className="text-text-muted text-sm mt-1">Gérez votre compte et vos préférences</p>
-      </div>
+      <PageHeader title="Réglages" subtitle="Gérez votre compte et vos préférences" />
 
       {/* Profil Section */}
       <section className="space-y-4">
@@ -178,6 +196,23 @@ export default function SettingsPage() {
             <Button variant="ghost" className="text-rose-400 hover:bg-rose-500/10" icon={<Trash2 className="w-4 h-4" />} onClick={() => toast.info("Fonctionnalité à venir")}>
               Supprimer
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Application Section */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 px-1">
+          <Compass className="w-4 h-4 text-brand-400" />
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">Application</h2>
+        </div>
+        <div className="bg-surface-1 border border-surface-3 rounded-2xl p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Version installée</p>
+              <p className="text-[11px] text-text-muted">Les mises à jour sont proposées automatiquement au lancement</p>
+            </div>
+            <span className="text-xs font-mono font-bold bg-surface-2 border border-surface-3 rounded-lg px-2.5 py-1">v{appVersion}</span>
           </div>
         </div>
       </section>

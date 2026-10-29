@@ -13,48 +13,48 @@ interface TourStep {
 
 const STEPS: TourStep[] = [
   {
-    title: "Bienvenue sur maPoche ! 👋",
+    title: "Bienvenue sur maPoche !",
     description:
       "Votre gestionnaire de finances personnel. Faisons un rapide tour pour vous aider à démarrer.",
   },
   {
     selector: ".tour-dashboard",
-    title: "📊 Votre tableau de bord",
+    title: "Votre tableau de bord",
     description:
       "Ici, retrouvez vos revenus, dépenses et cash-flow du mois. Naviguez entre les mois avec les flèches en haut à droite.",
     position: "bottom",
   },
   {
     selector: ".tour-add-button",
-    title: "➕ Ajouter une transaction",
+    title: "Ajouter une transaction",
     description:
       "Enregistrez rapidement une dépense, un revenu ou un virement. Sur mobile, utilisez le bouton central en bas de l'écran.",
     position: "bottom",
   },
   {
     selector: ".tour-nav-accounts",
-    title: "🏦 Vos comptes",
+    title: "Vos comptes",
     description:
       "Créez vos comptes bancaires (Courant, Épargne, Espèces…). maPoche calcule automatiquement vos soldes.",
     position: "right",
   },
   {
     selector: ".tour-nav-budgets",
-    title: "🎯 Vos budgets",
+    title: "Vos budgets",
     description:
       "Fixez des limites de dépenses par catégorie. maPoche vous alerte avant de dépasser votre budget !",
     position: "right",
   },
   {
     selector: ".tour-nav-patrimoine",
-    title: "🏠 Votre patrimoine",
+    title: "Votre patrimoine",
     description:
       "Suivez la valeur de vos actifs (immobilier, actions, épargne) et passifs (crédits) pour connaître votre patrimoine net.",
     position: "right",
   },
   {
     selector: ".tour-settings",
-    title: "⚙️ Paramètres",
+    title: "Paramètres",
     description:
       "N'oubliez pas de configurer votre devise (EUR, FCFA, USD…) dans les réglages pour un affichage adapté.",
     position: "top",
@@ -245,7 +245,7 @@ function TourOverlay({
                 onClick={onNext}
                 className="flex items-center gap-1 px-4 py-1.5 text-sm bg-brand-500 hover:bg-brand-600 text-white rounded-xl transition-colors font-semibold"
               >
-                {stepIndex === total - 1 ? "Terminé 🎉" : "Suivant"}
+                {stepIndex === total - 1 ? "Terminé" : "Suivant"}
                 {stepIndex < total - 1 && <ChevronRight className="w-4 h-4" />}
               </button>
             </div>

@@ -1,30 +1,50 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, ArrowLeftRight, PieChart, Plus, Settings } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Briefcase, Plus, Settings, BarChart3, Repeat, CalendarClock, Calculator, PieChart, Building2, Target, Tag, Timer, ReceiptText } from "lucide-react";
 import { useAccountsStore } from "@/stores/useAccountsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
-import { useTransactionsStore } from "@/stores/useTransactionsStore";
+import { useUIStore } from "@/stores/useUIStore";
 import { Modal } from "@/components/ui/Modal";
-import TransactionForm from "@/features/transactions/TransactionForm";
 
-const MORE_TABS = [
-  { to: "/rapports", icon: "📊", label: "Rapports" },
-  { to: "/recurrentes", icon: "🔁", label: "Récurrentes" },
-  { to: "/budgets", icon: "📈", label: "Budgets" },
-  { to: "/patrimoine", icon: "🏦", label: "Patrimoine" },
-  { to: "/objectifs", icon: "🎯", label: "Objectifs" },
-  { to: "/accounts", icon: "💳", label: "Comptes" },
-  { to: "/categories", icon: "🏷️", label: "Catégories" },
-  { to: "/settings", icon: "⚙️", label: "Réglages" },
+const MORE_SECTIONS: Array<{ title: string; items: Array<{ to: string; Icon: typeof Timer; label: string }> }> = [
+  {
+    title: "Activité",
+    items: [
+      { to: "/temps", Icon: Timer, label: "Temps" },
+      { to: "/factures", Icon: ReceiptText, label: "Factures" },
+      { to: "/objectifs", Icon: Target, label: "Objectifs" },
+    ],
+  },
+  {
+    title: "Argent",
+    items: [
+      { to: "/recurrentes", Icon: Repeat, label: "Récurrentes" },
+      { to: "/accounts", Icon: Building2, label: "Comptes" },
+      { to: "/budgets", Icon: PieChart, label: "Budgets" },
+      { to: "/echeancier", Icon: CalendarClock, label: "Échéancier" },
+      { to: "/patrimoine", Icon: Building2, label: "Patrimoine" },
+      { to: "/simulateur", Icon: Calculator, label: "Simulateur" },
+    ],
+  },
+  {
+    title: "Pilotage",
+    items: [{ to: "/rapports", Icon: BarChart3, label: "Rapports" }],
+  },
+  {
+    title: "Système",
+    items: [
+      { to: "/categories", Icon: Tag, label: "Catégories" },
+      { to: "/settings", Icon: Settings, label: "Réglages" },
+    ],
+  },
 ];
 
 export function BottomNav() {
-  const [txModalOpen, setTxModalOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
-  const { accounts, fetch: fetchAcc } = useAccountsStore();
-  const { categories, fetch: fetchCat } = useCategoriesStore();
-  const { fetch: fetchTx } = useTransactionsStore();
+  const setTxModalOpen = useUIStore((s) => s.setTxModalOpen);
+  const { fetch: fetchAcc } = useAccountsStore();
+  const { fetch: fetchCat } = useCategoriesStore();
 
   useEffect(() => {
     fetchAcc();
@@ -55,9 +75,9 @@ export function BottomNav() {
             </button>
           </div>
 
-          <NavLink to="/budgets" className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 py-1 transition-colors ${isActive ? "text-brand-400" : "text-text-muted"}`}>
-            <PieChart className="w-5 h-5" />
-            <span className="text-[9px] font-semibold tracking-wider uppercase">Budgets</span>
+          <NavLink to="/missions" className={({ isActive }) => `flex flex-col items-center justify-center gap-0.5 py-1 transition-colors ${isActive ? "text-brand-400" : "text-text-muted"}`}>
+            <Briefcase className="w-5 h-5" />
+            <span className="text-[9px] font-semibold tracking-wider uppercase">Missions</span>
           </NavLink>
 
           <button
@@ -72,41 +92,31 @@ export function BottomNav() {
 
       {/* More menu modal */}
       <Modal isOpen={moreOpen} onClose={() => setMoreOpen(false)} title="Navigation" size="sm">
-        <div className="space-y-3">
-          {Array.from({ length: Math.ceil(MORE_TABS.length / 2) }, (_, rowIdx) => {
-            const row = MORE_TABS.slice(rowIdx * 2, rowIdx * 2 + 2);
-            const isLastRow = rowIdx === Math.floor(MORE_TABS.length / 2);
-            const isSingle = isLastRow && MORE_TABS.length % 2 !== 0;
-            return (
-              <div key={rowIdx} className={`grid gap-3 ${isSingle ? "grid-cols-1" : "grid-cols-2"}`}>
-                {row.map(({ to, icon, label }) => (
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-0.5">
+          {MORE_SECTIONS.map((section) => (
+            <div key={section.title}>
+              <p className="px-1 mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted/70">
+                {section.title}
+              </p>
+              <div className={`grid gap-2 ${section.items.length === 1 ? "grid-cols-1" : "grid-cols-3"}`}>
+                {section.items.map(({ to, Icon, label }) => (
                   <button
                     key={to}
                     onClick={() => { navigate(to); setMoreOpen(false); }}
-                    className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-surface-2 hover:bg-surface-3 transition-colors"
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-surface-2 hover:bg-surface-3 transition-colors"
                   >
-                    <span className="text-2xl">{icon}</span>
-                    <span className="text-xs font-semibold">{label}</span>
+                    <Icon className="w-5 h-5 text-brand-400" />
+                    <span className="text-[10px] font-semibold text-center leading-tight">{label}</span>
                   </button>
                 ))}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </Modal>
 
-      {/* Quick Add Transaction Modal */}
-      <Modal isOpen={txModalOpen} onClose={() => setTxModalOpen(false)} title="Nouvelle transaction">
-        <TransactionForm
-          onClose={() => {
-            setTxModalOpen(false);
-            fetchTx();
-            fetchAcc();
-          }}
-          accounts={accounts}
-          categories={categories}
-        />
-      </Modal>
+      {/* Quick Add Transaction Modal — global (voir GlobalTransactionModal) */}
+
     </>
   );
 }

@@ -134,7 +134,6 @@ export default function TransactionImport({ isOpen, onClose, accounts }: Props) 
         recurrence_rule: null,
         recurrence_parent_id: null,
         is_reviewed: false,
-        is_active: true,
       });
       count++;
     }

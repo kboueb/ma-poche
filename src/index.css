@@ -19,16 +19,23 @@
 
   /* ====== DARK THEME ====== */
   .dark {
-    --surface-0: #0f172a; /* Bleu très sombre */
-    --surface-1: #1e293b;
-    --surface-2: #334155;
-    --surface-3: #475569;
-    --surface-4: #64748b;
-    --surface-5: #94a3b8;
+    --surface-0: #070b16; /* Presque noir bleuté */
+    --surface-1: #0e1526;
+    --surface-2: #182238;
+    --surface-3: #243150;
+    --surface-4: #33436b;
+    --surface-5: #4a5f8f;
     --text-primary: #f1f5f9;
     --text-secondary: #cbd5e1;
     --text-muted: #94a3b8;
     --brand-500: #10b981;
+    --glow-brand: 0 8px 32px -8px rgb(16 185 129 / 0.35);
+    --card-border: rgb(148 163 184 / 0.12);
+  }
+
+  :root {
+    --glow-brand: 0 8px 24px -8px rgb(16 185 129 / 0.4);
+    --card-border: var(--surface-3);
   }
 
   * { 
@@ -55,9 +62,58 @@
     margin: 0;
   }
   input[type="number"] { -moz-appearance: textfield; }
+
+  /* Impression facture : seule la feuille s'imprime */
+  @media print {
+    body * { visibility: hidden; }
+    .invoice-sheet, .invoice-sheet * { visibility: visible; }
+    .invoice-sheet {
+      position: absolute;
+      inset: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .print-hide { display: none !important; }
+  }
 }
 
 @layer utilities {
+  /* Carte standard : fond + bordure douce (thème-aware) */
+  .card {
+    background-color: var(--surface-1);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+  }
+  .card-interactive {
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card-interactive:hover {
+    border-color: rgb(16 185 129 / 0.35);
+    box-shadow: var(--glow-brand);
+  }
+  .card-interactive:active {
+    transform: scale(0.99);
+  }
+
+  /* Titre de section */
+  .section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Apparition en cascade : style={{ "--stagger": i }} */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-up {
+    animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--stagger, 0) * 60ms);
+  }
+
   .glass {
     background: rgba(30, 30, 40, 0.6);
     backdrop-filter: blur(12px);
@@ -77,6 +133,16 @@
   }
   .animate-progress {
     animation: progress 2s infinite ease-in-out;
+  }
+
+  /* Accessibilité : pas d'animation si l'utilisateur préfère */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up {
+      animation: none;
+    }
+    html {
+      scroll-behavior: auto;
+    }
   }
 }
 

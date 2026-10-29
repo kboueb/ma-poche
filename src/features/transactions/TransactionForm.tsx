@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
+import { useProjectsStore } from "@/stores/useProjectsStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -10,6 +11,9 @@ import { format } from "date-fns";
 import { transactionSchema } from "@/lib/validations";
 import type { z } from "zod";
 import { X, Repeat, Tag } from "lucide-react";
+import { toast } from "sonner";
+import AttachmentSection from "./AttachmentSection";
+import { uploadAttachment, isMissingTableError } from "@/lib/services/attachmentService";
 
 interface Props {
   onClose: () => void;
@@ -39,6 +43,7 @@ export default function TransactionForm({ onClose, accounts, categories, initial
   const { add, update } = useTransactionsStore();
   const [loading, setLoading] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(transactionSchema),
@@ -52,6 +57,7 @@ export default function TransactionForm({ onClose, accounts, categories, initial
       description: initialData?.description || null,
       note: initialData?.note || null,
       recurrence_rule: initialData?.recurrence_rule || null,
+      project_id: initialData?.project_id || null,
       tags: initialData?.tags || [],
     },
   });
@@ -59,6 +65,9 @@ export default function TransactionForm({ onClose, accounts, categories, initial
   const flow = watch("flow");
   const accountId = watch("account_id");
   const tags = watch("tags") || [];
+  const { projects, fetch: fetchProjects } = useProjectsStore();
+
+  useEffect(() => { fetchProjects(); }, [fetchProjects]);
 
   useEffect(() => {
     if (!accountId && accounts.length > 0) {
@@ -97,6 +106,7 @@ export default function TransactionForm({ onClose, accounts, categories, initial
       transfer_to_account_id: data.flow === "transfer" ? (data.transfer_to_account_id || null) : null,
       description: data.description || null,
       note: data.note || null,
+      project_id: data.project_id || undefined,
     };
 
     if (initialData) {
@@ -106,14 +116,32 @@ export default function TransactionForm({ onClose, accounts, categories, initial
       }
       await update(initialData.id, updatePayload);
     } else {
-      await add({
+      const created = await add({
         ...payload,
         tags: data.tags || [],
         recurrence_rule: data.recurrence_rule || null,
         recurrence_parent_id: null,
         is_reviewed: false,
-        is_active: true,
       });
+      if (created && pendingFiles.length > 0) {
+        let failed = 0;
+        for (const f of pendingFiles) {
+          try {
+            await uploadAttachment(created.id, f);
+          } catch (e) {
+            failed++;
+            if (isMissingTableError(e)) {
+              toast.error("Stockage non configuré : exécutez la migration add_attachments.sql");
+              break;
+            }
+          }
+        }
+        if (failed > 0) {
+          toast.warning(`Transaction créée, mais ${failed} justificatif${failed > 1 ? "s" : ""} n'ont pas pu être envoyés`);
+        } else {
+          toast.success("Transaction et justificatifs enregistrés");
+        }
+      }
     }
     setLoading(false);
     onClose();
@@ -160,7 +188,16 @@ export default function TransactionForm({ onClose, accounts, categories, initial
         <Select label="Vers le compte" options={accounts.filter((a) => a.id !== accountId).map((a) => ({ value: a.id, label: a.name }))} {...register("transfer_to_account_id")} error={errors.transfer_to_account_id?.message} placeholder="Choisir..." />
       )}
 
-      <Select label="Catégorie" options={filteredCategories.map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` }))} {...register("category_id")} placeholder="Optionnel" />
+      <Select label="Catégorie" options={filteredCategories.map((c) => ({ value: c.id, label: c.name }))} {...register("category_id")} placeholder="Optionnel" />
+
+      {projects.length > 0 && (
+        <Select
+          label="Mission (optionnel)"
+          options={projects.filter((p) => p.status === "active" || p.id === initialData?.project_id).map((p) => ({ value: p.id, label: `${p.client_name} — ${p.name}` }))}
+          {...register("project_id")}
+          placeholder="Aucune"
+        />
+      )}
 
       {/* Recurrence */}
       <div className="flex items-center gap-2">
@@ -221,6 +258,12 @@ export default function TransactionForm({ onClose, accounts, categories, initial
       </div>
 
       <Input label="Note" {...register("note")} placeholder="Note interne (optionnel)" />
+
+      <AttachmentSection
+        transactionId={initialData?.id || null}
+        pendingFiles={pendingFiles}
+        onPendingChange={setPendingFiles}
+      />
 
       <div className="flex gap-3 pt-2">
         <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Annuler</Button>

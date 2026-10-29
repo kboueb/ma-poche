@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, Target, Clock, CheckCircle2, AlertCircle, PiggyBank, ArrowRightLeft, Building2, Edit2 } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonCards } from "@/components/ui/Skeleton";
+import AppIcon from "@/components/ui/AppIcon";
+import IconPicker from "@/components/ui/IconPicker";
+import { Plus, Target, Clock, CheckCircle2, AlertCircle, PiggyBank, ArrowRightLeft, Building2, Edit2, Lightbulb } from "lucide-react";
 import type { Goal } from "@/types";
 import { useAccountsStore } from "@/stores/useAccountsStore";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
@@ -26,8 +31,8 @@ function GoalStatus({ goal, onContribute, onConvert, onEdit, accountBalance }: {
     <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5 space-y-4">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ backgroundColor: `${goal.color}20`, color: goal.color }}>
-            {goal.icon === "target" ? "🎯" : goal.icon}
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${goal.color}20`, color: goal.color }}>
+            <AppIcon icon={goal.icon} className="w-5 h-5" />
           </div>
           <div>
             <h3 className="text-sm font-bold">{goal.name}</h3>
@@ -70,8 +75,8 @@ function GoalStatus({ goal, onContribute, onConvert, onEdit, accountBalance }: {
       <div className="flex items-center justify-between gap-3 pt-2">
         {monthlyNeeded !== null && monthlyNeeded > 0 && !isReached ? (
           <div className="bg-brand-500/5 border border-brand-500/10 rounded-xl px-3 py-2 flex-1">
-            <p className="text-[11px] text-brand-400 font-medium">
-              💡 Épargnez <span className="font-mono font-bold">{formatCurrency(monthlyNeeded)}</span>/mois
+            <p className="text-[11px] text-brand-400 font-medium flex items-center gap-1.5">
+              <Lightbulb className="w-3.5 h-3.5 shrink-0" /> Épargnez <span className="font-mono font-bold">{formatCurrency(monthlyNeeded)}</span>/mois
             </p>
           </div>
         ) : (
@@ -114,6 +119,7 @@ export default function GoalsPage() {
   const [current, setCurrent] = useState("0");
   const [deadline, setDeadline] = useState("");
   const [linkedAccountId, setLinkedAccountId] = useState("");
+  const [icon, setIcon] = useState("target");
   const [saving, setSaving] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   
@@ -154,7 +160,7 @@ export default function GoalsPage() {
         current_amount: linkedAccountId ? 0 : parseFloat(current || "0"),
         deadline: deadline || null, 
         linked_account_id: linkedAccountId || null,
-        icon: "target", 
+        icon,
         color: "#10b981",
       };
 
@@ -175,13 +181,14 @@ export default function GoalsPage() {
     setCurrent(goal.current_amount.toString());
     setDeadline(goal.deadline || "");
     setLinkedAccountId(goal.linked_account_id || "");
+    setIcon(goal.icon || "target");
     setFormOpen(true);
   };
 
   const closeForm = () => {
     setFormOpen(false);
     setEditingGoal(null);
-    setName(""); setTarget(""); setCurrent("0"); setDeadline(""); setLinkedAccountId("");
+    setName(""); setTarget(""); setCurrent("0"); setDeadline(""); setLinkedAccountId(""); setIcon("target");
     setSaving(false);
   };
 
@@ -245,13 +252,11 @@ export default function GoalsPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Objectifs</h1>
-          <p className="text-text-muted text-sm mt-1">{goals.length} objectif{goals.length > 1 ? "s" : ""}</p>
-        </div>
-        <Button icon={<Plus className="w-4 h-4" />} onClick={() => setFormOpen(true)}>Nouvel objectif</Button>
-      </div>
+      <PageHeader
+        title="Objectifs"
+        subtitle={`${goals.length} objectif${goals.length > 1 ? "s" : ""}`}
+        actions={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setFormOpen(true)}>Nouvel objectif</Button>}
+      />
 
       {/* Total progress */}
       {goals.length > 0 && (
@@ -272,15 +277,15 @@ export default function GoalsPage() {
 
       {/* Goals grid */}
       {loading ? (
-        <div className="grid sm:grid-cols-2 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-48 bg-surface-1 rounded-2xl animate-pulse" />)}
-        </div>
+        <SkeletonCards count={3} cardClass="h-48" />
       ) : goals.length === 0 ? (
-        <div className="text-center py-20 text-text-muted">
-          <Target className="w-12 h-12 mx-auto mb-3 text-text-muted opacity-40" />
-          <p>Aucun objectif pour le moment</p>
-          <Button variant="secondary" className="mt-4" onClick={() => setFormOpen(true)} icon={<Plus className="w-4 h-4" />}>Créer mon premier objectif</Button>
-        </div>
+        <EmptyState
+          icon={<Target className="w-12 h-12" />}
+          title="Aucun objectif pour le moment"
+          description="Définissez un objectif d'épargne pour suivre votre progression."
+          actionLabel="Créer mon premier objectif"
+          onAction={() => setFormOpen(true)}
+        />
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
           {goals.map((g) => (
@@ -314,6 +319,7 @@ export default function GoalsPage() {
           )}
 
           <Input label="Date limite (optionnel)" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+          <IconPicker value={icon} onChange={setIcon} />
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" className="flex-1" onClick={closeForm}>Annuler</Button>
             <Button className="flex-1" loading={saving} onClick={saveGoal}>{editingGoal ? "Enregistrer" : "Créer"}</Button>
@@ -372,11 +378,11 @@ export default function GoalsPage() {
           <Select
             label="Type d'actif"
             options={[
-              { value: "real_estate", label: "🏡 Immobilier" },
-              { value: "vehicle", label: "🚗 Véhicule" },
-              { value: "stock", label: "📈 Actions / Bourse" },
-              { value: "savings_account", label: "🏦 Compte bloqué" },
-              { value: "other", label: "📦 Autre" },
+              { value: "real_estate", label: "Immobilier" },
+              { value: "vehicle", label: "Véhicule" },
+              { value: "stock", label: "Actions / Bourse" },
+              { value: "savings_account", label: "Compte bloqué" },
+              { value: "other", label: "Autre" },
             ]}
             value={assetType}
             onChange={(e) => setAssetType(e.target.value)}

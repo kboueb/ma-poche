@@ -55,7 +55,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   register: async (email, password) => {
     const { error } = await supabase.auth.signUp({ email, password });
-    return error ? translateError(error.message) : null;
+    if (!error) return null;
+    // Anti-énumération : un email déjà inscrit reçoit la même réponse qu'une création
+    if (error.message.includes("already registered") || error.message.includes("already been registered")) {
+      return null;
+    }
+    return translateError(error.message);
   },
 
   logout: async () => {

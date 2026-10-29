@@ -13,6 +13,27 @@ export function formatRelative(date: string | Date): string {
   return format(d, "d MMM", { locale: fr });
 }
 
+/** Échéance future ou passée en langage naturel : "Demain", "Dans 5 j", "En retard de 3 j". */
+export function formatDue(date: string | Date): string {
+  const d = typeof date === "string" ? parseISO(date) : date;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(d);
+  target.setHours(0, 0, 0, 0);
+  const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return "Aujourd'hui";
+  if (diff === 1) return "Demain";
+  if (diff === -1) return "Hier";
+  if (diff > 1 && diff < 7) return `Dans ${diff} j`;
+  if (diff >= 7 && diff < 30) {
+    const w = Math.round(diff / 7);
+    return w <= 1 ? "Dans 1 sem." : `Dans ${w} sem.`;
+  }
+  if (diff >= 30) return format(target, "d MMM", { locale: fr });
+  if (diff < -1 && diff > -7) return `En retard de ${-diff} j`;
+  return `En retard (${format(target, "d MMM", { locale: fr })})`;
+}
+
 export function getMonthRange(date: Date = new Date()) {
   return { start: startOfMonth(date), end: endOfMonth(date) };
 }

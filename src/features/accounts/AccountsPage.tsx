@@ -4,17 +4,19 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Plus, Wallet, Landmark, CreditCard, Trash2, Edit2 } from "lucide-react";
+import { Plus, Wallet, Landmark, Trash2, Edit2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { toast } from "sonner";
 import type { Account } from "@/types";
+import { PageHeader } from "@/components/ui/PageHeader";
+import AppIcon from "@/components/ui/AppIcon";
 
 const ACCOUNT_TYPES = [
-  { value: "checking", label: "🏦 Compte Courant" },
-  { value: "savings", label: "💰 Épargne / Livret" },
-  { value: "mobile_money", label: "📱 Mobile Money (Wave, Orange...)" },
-  { value: "cash", label: "💵 Espèces / Cash" },
-  { value: "investment", label: "📈 Investissement" },
+  { value: "checking", label: "Compte Courant", icon: "bank" },
+  { value: "savings", label: "Épargne / Livret", icon: "piggy" },
+  { value: "mobile_money", label: "Mobile Money (Wave, Orange...)", icon: "phone" },
+  { value: "cash", label: "Espèces / Cash", icon: "cash" },
+  { value: "investment", label: "Investissement", icon: "trending" },
 ];
 
 export default function AccountsPage() {
@@ -80,13 +82,11 @@ export default function AccountsPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Mes Comptes</h1>
-          <p className="text-text-muted text-sm mt-1">{accounts.length} compte{accounts.length > 1 ? "s" : ""} actif(s)</p>
-        </div>
-        <Button icon={<Plus className="w-4 h-4" />} onClick={() => setFormOpen(true)}>Nouveau compte</Button>
-      </div>
+      <PageHeader
+        title="Mes Comptes"
+        subtitle={`${accounts.length} compte${accounts.length > 1 ? "s" : ""} actif(s)`}
+        actions={<Button icon={<Plus className="w-4 h-4" />} onClick={() => setFormOpen(true)}>Nouveau compte</Button>}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {accounts.map((acc) => (
@@ -99,7 +99,7 @@ export default function AccountsPage() {
             <div className="flex items-start justify-between relative z-10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${acc.color}20`, color: acc.color }}>
-                  {acc.type === "mobile_money" ? <CreditCard className="w-5 h-5" /> : <Landmark className="w-5 h-5" />}
+                  <AppIcon icon={ACCOUNT_TYPES.find((t) => t.value === acc.type)?.icon || "bank"} className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-bold text-text-primary">{acc.name}</h3>
@@ -107,12 +107,12 @@ export default function AccountsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => openEdit(acc)} className="p-2 text-text-muted hover:text-brand-400 opacity-0 group-hover:opacity-100 transition-all">
+                <button onClick={() => openEdit(acc)} className="p-2 text-text-muted hover:text-brand-400 md:opacity-0 md:group-hover:opacity-100 transition-all">
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button 
                   onClick={() => { remove(acc.id); toast.success("Compte supprimé"); }}
-                  className="p-2 text-text-muted hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all"
+                  className="p-2 text-text-muted hover:text-rose-400 md:opacity-0 md:group-hover:opacity-100 transition-all"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

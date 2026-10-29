@@ -115,7 +115,7 @@ export default function ResetPasswordPage() {
         <div className="bg-surface-1 border border-surface-3 rounded-2xl p-8 space-y-6">
           <div className="text-center">
             <h2 className="text-2xl font-bold">
-              {success ? "Mot de passe mis à jour 🎉" : "Nouveau mot de passe"}
+              {success ? "Mot de passe mis à jour" : "Nouveau mot de passe"}
             </h2>
             <p className="text-text-muted text-sm mt-1">
               {success

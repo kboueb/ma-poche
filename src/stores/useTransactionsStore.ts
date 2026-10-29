@@ -8,7 +8,7 @@ interface TransactionsState {
   transactions: Transaction[];
   loading: boolean;
   fetch: (filters?: { from?: string; to?: string; accountId?: string; categoryId?: string; flow?: string }) => Promise<void>;
-  add: (t: Omit<Transaction, "id" | "user_id" | "created_at">) => Promise<void>;
+  add: (t: Omit<Transaction, "id" | "user_id" | "created_at">) => Promise<Transaction | null>;
   remove: (id: string) => Promise<void>;
   update: (id: string, data: Partial<Transaction>) => Promise<void>;
 }
@@ -52,7 +52,7 @@ export const useTransactionsStore = create<TransactionsState>((set) => ({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       console.error("Erreur: Utilisateur non trouvé");
-      return;
+      return null;
     }
 
     const { data, error } = await supabase
@@ -64,12 +64,14 @@ export const useTransactionsStore = create<TransactionsState>((set) => ({
     if (error) {
       console.error("Erreur Supabase lors de l'insertion:", error);
       toast.error("Erreur lors de la création de la transaction");
-      return;
+      return null;
     }
 
     if (data) {
       set((s) => ({ transactions: [data as Transaction, ...s.transactions] }));
+      return data as Transaction;
     }
+    return null;
   },
 
   remove: async (id) => {

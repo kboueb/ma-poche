@@ -10,6 +10,7 @@ export const transactionSchema = z.object({
   description: z.string().nullable().optional(),
   note: z.string().nullable().optional(),
   recurrence_rule: z.string().nullable().optional(),
+  project_id: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
 }).refine(
   (data) => data.flow !== "transfer" || (data.transfer_to_account_id && data.transfer_to_account_id.length > 0),

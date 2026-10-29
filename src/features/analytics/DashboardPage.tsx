@@ -5,9 +5,9 @@ import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { useAccountsStore } from "@/stores/useAccountsStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
-import { formatCurrency, formatCompact, convertToBase } from "@/lib/utils/currency";
+import { formatCurrency, convertToBase } from "@/lib/utils/currency";
 import { formatDate, getMonthRange, getLast12Months } from "@/lib/utils/dates";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Plus, Target, ChevronLeft, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Plus, Target, ChevronLeft, ChevronRight, Briefcase } from "lucide-react";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/utils/labels";
 import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Line, ComposedChart, PieChart, Pie, Cell } from "recharts";
 import { parseISO, isWithinInterval, addMonths, subMonths } from "date-fns";
@@ -16,30 +16,19 @@ import TransactionForm from "@/features/transactions/TransactionForm";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { computeAccountBalance, computeTotalBalance } from "@/lib/utils/accounts";
+import { PageHeader } from "@/components/ui/PageHeader";
+import AppIcon from "@/components/ui/AppIcon";
+import MissionsDashboard from "./MissionsDashboard";
+import { Card } from "@/components/ui/Card";
+import { SkeletonStats } from "@/components/ui/Skeleton";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 
-const CATEGORY_COLORS = [
-  "#6366f1", "#10b981", "#f59e0b", "#f43f5e", "#8b5cf6", 
-  "#3b82f6", "#06b6d4", "#ec4899", "#94a3b8"
-];
-
-function StatCard({ label, value, icon: Icon, color, sub }: { label: string; value: string; icon: React.ElementType; color: string; sub?: string }) {
-  return (
-    <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5 flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-text-muted uppercase tracking-wider">{label}</span>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
-          <Icon className="w-4 h-4" />
-        </div>
-      </div>
-      <p className="text-2xl font-bold font-mono tracking-tight">{value}</p>
-      {sub && <p className="text-xs text-text-muted">{sub}</p>}
-    </div>
-  );
-}
-
-function SkeletonCard() {
-  return <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5 h-[120px] animate-pulse" />;
-}
+const DASHBOARD_MODE_KEY = "mapoche-dashboard-mode";
+import {
+  CHART_SERIES, chartColor, chartGridProps, axisTickSmall, axisLineProps,
+  compactTick, tooltipStyle, tooltipLabelStyle, currencyTooltip,
+} from "@/lib/charts";
 
 export default function DashboardPage() {
   const { transactions, loading: txLoading, fetch: fetchTx } = useTransactionsStore();
@@ -47,6 +36,13 @@ export default function DashboardPage() {
   const { categories, fetch: fetchCat } = useCategoriesStore();
   const globalCurrency = useSettingsStore((s) => s.currency);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [mode, setMode] = useState<"finance" | "missions">(() => {
+    try {
+      return (localStorage.getItem(DASHBOARD_MODE_KEY) as "finance" | "missions") || "finance";
+    } catch {
+      return "finance";
+    }
+  });
   const [goals, setGoals] = useState<any[]>([]);
   const navigate = useNavigate();
 
@@ -137,6 +133,11 @@ export default function DashboardPage() {
     });
   }, [transactions, globalCurrency]);
 
+  const switchMode = (m: "finance" | "missions") => {
+    setMode(m);
+    try { localStorage.setItem(DASHBOARD_MODE_KEY, m); } catch { /* ignore */ }
+  };
+
   // Recent transactions
   const recent = transactions.slice(0, 8);
 
@@ -144,48 +145,80 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8">
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tableau de bord</h1>
-          <p className="text-text-muted text-sm mt-1">Vos finances en un coup d'œil</p>
-        </div>
-        
-        <div className="flex items-center gap-2 bg-surface-1 border border-surface-3 rounded-xl p-1 shrink-0 w-fit">
-          <button 
-            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-            className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <span className="text-sm font-semibold min-w-[110px] text-center capitalize">
-            {formatDate(currentDate, "MMMM yyyy")}
-          </span>
-          <button 
-            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-            className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Tableau de bord"
+        subtitle={mode === "finance" ? "Vos finances en un coup d'œil" : "Pilotage de ton activité"}
+        actions={
+          <SegmentedControl
+            value={mode}
+            onChange={switchMode}
+            options={[
+              { value: "finance", label: <><Wallet className="w-3.5 h-3.5" /> Perso</> },
+              { value: "missions", label: <><Briefcase className="w-3.5 h-3.5" /> Missions</> },
+            ]}
+          />
+        }
+      />
 
-      {/* Stat cards */}
-      <div className="tour-dashboard grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
-        ) : (
-          <>
-            <StatCard label="Disponible" value={formatCurrency(totalBalance)} icon={Wallet} color="bg-brand-500/10 text-brand-400" />
-            <StatCard label="Revenus" value={formatCurrency(income)} icon={ArrowUpRight} color="bg-emerald-500/10 text-emerald-400" />
-            <StatCard label="Dépenses" value={formatCurrency(expenses)} icon={ArrowDownRight} color="bg-rose-500/10 text-rose-400" />
-            <StatCard label="Cash-flow" value={formatCurrency(cashflow)} icon={cashflow >= 0 ? TrendingUp : TrendingDown} color={cashflow >= 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"} sub={`${savingsRate.toFixed(0)}% épargné`} />
-          </>
-        )}
-      </div>
+      {mode === "missions" ? (
+        <MissionsDashboard />
+      ) : (
+        <>
+          {/* Hero solde */}
+          {loading ? (
+            <SkeletonStats count={1} />
+          ) : (
+            <div className="animate-fade-up relative overflow-hidden rounded-3xl border border-brand-500/20 bg-gradient-to-br from-brand-500/[0.12] via-surface-1 to-surface-1 p-6">
+              <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 rounded-full bg-brand-500/10 blur-3xl" />
+              <div className="relative flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-medium text-text-muted uppercase tracking-wider">Solde total</p>
+                  <p className="text-4xl font-bold font-mono tracking-tight tabular-nums mt-1">{formatCurrency(totalBalance)}</p>
+                  <p className={`text-xs mt-1.5 font-medium ${cashflow >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    {cashflow >= 0 ? "+" : ""}{formatCurrency(cashflow)} ce mois · {savingsRate.toFixed(0)}% épargné
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 bg-surface-1/70 border border-surface-3 rounded-xl p-1 shrink-0 w-fit">
+                  <button
+                    onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+                    className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
+                    aria-label="Mois précédent"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <span className="text-sm font-semibold min-w-[110px] text-center capitalize">
+                    {formatDate(currentDate, "MMMM yyyy")}
+                  </span>
+                  <button
+                    onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+                    className="p-1.5 hover:bg-surface-2 rounded-lg transition-colors text-text-muted hover:text-text-primary"
+                    aria-label="Mois suivant"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="relative grid grid-cols-3 gap-3 mt-5">
+                <div className="rounded-2xl bg-surface-1/70 border border-surface-3 p-3">
+                  <p className="flex items-center gap-1.5 text-[11px] text-text-muted uppercase tracking-wider"><ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />Revenus</p>
+                  <p className="text-base sm:text-lg font-bold font-mono tabular-nums mt-1 text-emerald-400">{formatCurrency(income)}</p>
+                </div>
+                <div className="rounded-2xl bg-surface-1/70 border border-surface-3 p-3">
+                  <p className="flex items-center gap-1.5 text-[11px] text-text-muted uppercase tracking-wider"><ArrowDownRight className="w-3.5 h-3.5 text-rose-400" />Dépenses</p>
+                  <p className="text-base sm:text-lg font-bold font-mono tabular-nums mt-1 text-rose-400">{formatCurrency(expenses)}</p>
+                </div>
+                <div className="rounded-2xl bg-surface-1/70 border border-surface-3 p-3">
+                  <p className="flex items-center gap-1.5 text-[11px] text-text-muted uppercase tracking-wider">
+                    {cashflow >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}Net
+                  </p>
+                  <p className={`text-base sm:text-lg font-bold font-mono tabular-nums mt-1 ${cashflow >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{formatCurrency(cashflow)}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
       {/* Quick Actions */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 animate-fade-up" style={{ "--stagger": 1 } as React.CSSProperties}>
         <button 
           onClick={() => setTxModalOpen(true)}
           className="tour-add-button flex items-center gap-2 px-4 py-2 bg-surface-1 border border-surface-3 rounded-xl text-sm font-medium hover:bg-surface-2 transition-all"
@@ -203,38 +236,31 @@ export default function DashboardPage() {
       {/* Charts section */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Chart — Revenus vs Dépenses */}
-        <div className="lg:col-span-2 bg-surface-1 border border-surface-3 rounded-2xl p-6">
-          <h2 className="text-sm font-semibold mb-6">Revenus vs Dépenses — 12 derniers mois</h2>
+        <Card className="lg:col-span-2 p-6" stagger={2}>
+          <SectionTitle className="mb-6">Revenus vs Dépenses — 12 derniers mois</SectionTitle>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-3)" />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCompact(v)} />
+                <CartesianGrid {...chartGridProps} />
+                <XAxis dataKey="label" tick={axisTickSmall} {...axisLineProps} />
+                <YAxis tick={axisTickSmall} {...axisLineProps} tickFormatter={compactTick} />
                 <Tooltip
-                  contentStyle={{ 
-                    backgroundColor: "var(--surface-1)", 
-                    border: "1px solid var(--surface-3)", 
-                    borderRadius: "12px", 
-                    fontSize: "12px", 
-                    color: "var(--text-primary)",
-                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" 
-                  }}
+                  contentStyle={tooltipStyle}
                   itemStyle={{ color: "var(--text-primary)" }}
-                  labelStyle={{ color: "var(--text-muted)", fontWeight: "bold", marginBottom: "4px" }}
-                  formatter={(v: number) => formatCurrency(v)}
+                  labelStyle={tooltipLabelStyle}
+                  formatter={currencyTooltip}
                 />
-                <Bar dataKey="income" name="Revenus" fill="#34d399" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expenses" name="Dépenses" fill="#fb7185" radius={[4, 4, 0, 0]} />
-                <Line type="monotone" dataKey="net" name="Solde net" stroke="#6366f1" strokeWidth={2} dot={false} />
+                <Bar dataKey="income" name="Revenus" fill={CHART_SERIES.income} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" name="Dépenses" fill={CHART_SERIES.expense} radius={[4, 4, 0, 0]} />
+                <Line type="monotone" dataKey="net" name="Solde net" stroke={CHART_SERIES.net} strokeWidth={2} dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </Card>
 
         {/* Category breakdown Chart */}
-        <div className="bg-surface-1 border border-surface-3 rounded-2xl p-6">
-          <h2 className="text-sm font-semibold mb-6">Dépenses par catégorie</h2>
+        <Card className="p-6" stagger={3}>
+          <SectionTitle className="mb-6">Dépenses par catégorie</SectionTitle>
           {categoryData.length > 0 ? (
             <div className="space-y-6">
               <div className="h-40">
@@ -249,19 +275,12 @@ export default function DashboardPage() {
                       strokeWidth={0}
                     >
                       {categoryData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={chartColor(index)} />
                       ))}
                     </Pie>
                     <Tooltip 
-                      formatter={(v: number) => formatCurrency(v)}
-                      contentStyle={{ 
-                        backgroundColor: "var(--surface-1)", 
-                        border: "1px solid var(--surface-3)", 
-                        borderRadius: "12px", 
-                        fontSize: "12px",
-                        color: "var(--text-primary)",
-                        boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)"
-                      }}
+                      formatter={currencyTooltip}
+                      contentStyle={tooltipStyle}
                       itemStyle={{ color: "var(--text-primary)" }}
                     />
                   </PieChart>
@@ -271,7 +290,7 @@ export default function DashboardPage() {
                 {categoryData.slice(0, 5).map((d, i) => (
                   <div key={d.name} className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 truncate">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: chartColor(i) }} />
                       <span className="text-[11px] font-medium truncate">{d.name}</span>
                     </div>
                     <span className="text-[11px] font-mono text-text-muted">{((d.value / expenses) * 100).toFixed(0)}%</span>
@@ -285,22 +304,28 @@ export default function DashboardPage() {
               <p>Pas encore assez de données <br/> de dépenses ce mois-ci.</p>
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Two columns: Recent + Accounts */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Recent transactions */}
-        <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold mb-4">Dernières transactions</h2>
+        <Card className="p-5" stagger={4}>
+          <SectionTitle className="mb-4">Dernières transactions</SectionTitle>
           <div className="space-y-2">
             {recent.length === 0 && !loading && (
               <p className="text-center text-text-muted text-sm py-8">Aucune transaction</p>
             )}
             {recent.map((t) => (
               <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-2 transition-colors">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm ${t.flow === "income" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
-                  {t.category?.icon ? t.category.icon.slice(0, 2) : (t.flow === "income" ? "↑" : "↓")}
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${t.flow === "income" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
+                  {t.category?.icon ? (
+                    <AppIcon icon={t.category.icon} className="w-4 h-4" />
+                  ) : t.flow === "income" ? (
+                    <ArrowUpRight className="w-4 h-4" />
+                  ) : (
+                    <ArrowDownRight className="w-4 h-4" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{t.description || t.category?.name || "Sans description"}</p>
@@ -312,11 +337,11 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
         {/* Accounts overview */}
-        <div className="bg-surface-1 border border-surface-3 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold mb-4 flex items-center gap-2"><Wallet className="w-4 h-4 text-brand-400" /> Mes comptes</h2>
+        <Card className="p-5" stagger={5}>
+          <SectionTitle className="mb-4"><Wallet className="w-4 h-4 text-brand-400" /> Mes comptes</SectionTitle>
           <div className="space-y-2">
             {accounts.length === 0 && !loading && (
               <p className="text-center text-text-muted text-sm py-8">Aucun compte configuré</p>
@@ -339,37 +364,40 @@ export default function DashboardPage() {
               );
             })}
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Goals progress section */}
       {goals.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-brand-400" /> Objectifs prioritaires</h2>
-            <button onClick={() => navigate("/objectifs")} className="text-xs text-brand-400 hover:underline">Tout voir</button>
-          </div>
+        <div className="space-y-4 animate-fade-up" style={{ "--stagger": 6 } as React.CSSProperties}>
+          <SectionTitle
+            action={<button onClick={() => navigate("/objectifs")} className="text-xs text-brand-400 hover:underline">Tout voir</button>}
+          >
+            <Target className="w-4 h-4 text-brand-400" /> Objectifs prioritaires
+          </SectionTitle>
           <div className="grid sm:grid-cols-3 gap-4">
             {goals.map((g) => {
               const pct = g.target_amount > 0 ? (Number(g.current_amount) / Number(g.target_amount)) * 100 : 0;
               return (
-                <div key={g.id} className="bg-surface-1 border border-surface-3 rounded-2xl p-4 space-y-3">
+                <Card key={g.id} className="p-4 space-y-3" interactive onClick={() => navigate("/objectifs")}>
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{g.icon === "target" ? "🎯" : g.icon}</span>
+                    <AppIcon icon={g.icon} className="w-[18px] h-[18px]" />
                     <span className="text-xs font-bold truncate">{g.name}</span>
                   </div>
                   <div className="h-1.5 bg-surface-3 rounded-full overflow-hidden">
                     <div className="h-full bg-brand-500 rounded-full" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: g.color }} />
                   </div>
-                  <div className="flex justify-between text-[10px] font-mono">
+                  <div className="flex justify-between text-[10px] font-mono tabular-nums">
                     <span className="text-text-primary">{formatCurrency(Number(g.current_amount))}</span>
                     <span className="text-text-muted">{pct.toFixed(0)}%</span>
                   </div>
-                </div>
+                </Card>
               );
             })}
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Modals */}

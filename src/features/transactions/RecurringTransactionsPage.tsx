@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/utils/dates";
 import { Repeat, Pause, Play, Trash2, Calendar, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { toast } from "sonner";
 import type { Transaction } from "@/types";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 const RECURRENCE_LABELS: Record<string, string> = {
   weekly: "Chaque semaine",
@@ -60,14 +61,10 @@ export default function RecurringTransactionsPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Transactions récurrentes</h1>
-        <p className="text-text-muted text-sm mt-1">
-          {parentTransactions.length} règle{parentTransactions.length !== 1 ? "s" : ""} active{parentTransactions.length !== 1 ? "s" : ""}
-          {" · "}
-          {parentTransactions.filter((t) => t.is_active === false).length} en pause
-        </p>
-      </div>
+      <PageHeader
+        title="Transactions récurrentes"
+        subtitle={`${parentTransactions.length} règle${parentTransactions.length !== 1 ? "s" : ""} active${parentTransactions.length !== 1 ? "s" : ""} · ${parentTransactions.filter((t) => t.is_active === false).length} en pause`}
+      />
 
       {parentTransactions.length === 0 ? (
         <div className="text-center py-20 bg-surface-1 border-2 border-dashed border-surface-3 rounded-3xl">

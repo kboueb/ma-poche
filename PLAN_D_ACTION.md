@@ -3,13 +3,13 @@
 ## Objectif
 Passer en production stable : snapshots patrimoine, justificatifs, factures, mises à jour automatiques fonctionnelles, et tests de régression.
 
-Version actuelle : `1.7.0` (`package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`).
+Version actuelle : `1.8.0` (publiée le 2026-10-29) (`package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`).
 
 ---
 
 ## Phase 0 : Bloquant — à faire avant tout le reste
 
-- [ ] **Sauvegarder la clé de signature Tauri** hors de la machine : `~/.tauri/mapoche.key` + son mot de passe dans un gestionnaire de mots de passe, plus une copie chiffrée ailleurs.
+- [x] **Sauvegarder la clé de signature Tauri** (clé chiffrée dans iCloud Drive `maPoche-sauvegarde-cle/`, mot de passe dans le gestionnaire) hors de la machine : `~/.tauri/mapoche.key` + son mot de passe dans un gestionnaire de mots de passe, plus une copie chiffrée ailleurs.
   Sans cette clé, plus aucune mise à jour ne peut être installée par les utilisateurs existants (irréversible).
   Le mot de passe est aujourd'hui stocké en clair à côté de la clé (`mapoche.key.password`) : un seul vol ou une seule panne de disque fait tout perdre d'un coup.
 - [x] **Versionner `src-tauri/`** et tout le code qui était hors git (missions, temps, factures, stores, tests, migrations) — fait le 2026-10-29.
@@ -28,20 +28,20 @@ Ordre imposé par les dépendances (clés étrangères) :
 
 | # | Fichier | Dépend de | Appliqué en prod ? |
 |---|---------|-----------|--------------------|
-| 1 | `init.sql` | — | ? |
-| 2 | `fix_schema.sql` | init | ? |
-| 3 | `add_patrimoine_snapshots.sql` | init (budgets, transactions) | ? |
-| 4 | `add_attachments.sql` | init (transactions) | ? |
-| 5 | `add_updates_bucket.sql` | — | ? |
-| 6 | `add_projects.sql` | — | ? |
-| 7 | `fix_missing_buckets.sql` | — (doublon partiel de 5, idempotent) | ? |
-| 8 | `harden_rls.sql` | tables ci-dessus | ? |
-| 9 | `add_invoices.sql` | projects, transactions | ? |
-| 10 | `add_time_tracking.sql` | projects | ? |
-| 11 | `add_invoice_payments.sql` | invoices, transactions | ? |
+| 1 | `init.sql` | — | ✅ |
+| 2 | `fix_schema.sql` | init | ✅ |
+| 3 | `add_patrimoine_snapshots.sql` | init (budgets, transactions) | ✅ |
+| 4 | `add_attachments.sql` | init (transactions) | ✅ |
+| 5 | `add_updates_bucket.sql` | — | ✅ |
+| 6 | `add_projects.sql` | — | ✅ |
+| 7 | `fix_missing_buckets.sql` | — (doublon partiel de 5, idempotent) | ✅ |
+| 8 | `harden_rls.sql` | tables ci-dessus | ✅ |
+| 9 | `add_invoices.sql` | projects, transactions | ✅ |
+| 10 | `add_time_tracking.sql` | projects | ✅ |
+| 11 | `add_invoice_payments.sql` | invoices, transactions | ✅ |
 
-- [ ] Remplir la colonne « Appliqué » (vérifier dans Supabase → Table Editor que les tables existent).
-- [ ] Appliquer les manquantes dans l'ordre ci-dessus.
+- [x] Remplir la colonne « Appliqué » (vérifier dans Supabase → Table Editor que les tables existent).
+- [x] Appliquer les manquantes dans l'ordre ci-dessus.
 - [ ] **Ensuite :** passer au CLI Supabase pour ne plus copier-coller à la main :
   `supabase link` → renommer les fichiers au format horodaté (`20260425000000_init.sql`…) → `supabase migration repair --status applied <versions>` pour celles déjà en prod → désormais `supabase migration new <nom>` + `supabase db push`.
 
@@ -89,7 +89,7 @@ Le script :
 6. Commit `release: v1.8.0` + tag `v1.8.0`.
 
 - [ ] Tester : lancer une install 1.7.0 → la bannière 1.8.0 apparaît → la mise à jour s'installe et l'app redémarre en 1.8.0.
-- [ ] `git push && git push --tags`
+- [x] `git push && git push --tags` (v1.8.0)
 
 ---
 

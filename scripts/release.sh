@@ -2,7 +2,7 @@
 # Publie une nouvelle version de maPoche (macOS arm64) sur le bucket Supabase `updates`.
 #
 # Usage : scripts/release.sh 1.8.0 "Notes de version" [--yes]
-#   SUPABASE_SERVICE_ROLE_KEY : variable d'environnement, sinon lue dans .env.local (ignoré par git)
+#   SUPABASE_SERVICE_ROLE_KEY : variable d'environnement, sinon lue dans .env.local ou .env (ignorés par git)
 #   --yes : publie sans demander confirmation
 #
 # Étapes : vérifs → bump version → tests → build signé → latest.json → upload → commit + tag
@@ -22,14 +22,17 @@ step() { echo; echo "▶ $*"; }
 
 cd "$(dirname "$0")/.."
 
-if [[ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" && -f .env.local ]]; then
-  SUPABASE_SERVICE_ROLE_KEY="$(sed -n 's/^SUPABASE_SERVICE_ROLE_KEY=//p' .env.local | tr -d '"' | head -1)"
-fi
+# Vite n'expose que les variables VITE_* : la clé de service ne finit jamais dans le bundle.
+for f in .env.local .env; do
+  if [[ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" && -f "$f" ]]; then
+    SUPABASE_SERVICE_ROLE_KEY="$(sed -n 's/^SUPABASE_SERVICE_ROLE_KEY=//p' "$f" | tr -d '"' | head -1)"
+  fi
+done
 
 # --- Vérifications ---------------------------------------------------------
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Version invalide. Usage : $0 1.8.0 \"Notes\""
 [[ -n "$NOTES" ]] || die "Notes de version manquantes."
-[[ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]] || die "SUPABASE_SERVICE_ROLE_KEY non défini (variable d'environnement ou .env.local)."
+[[ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]] || die "SUPABASE_SERVICE_ROLE_KEY non défini (variable d'environnement, .env.local ou .env)."
 [[ -f "$KEY_FILE" ]] || die "Clé de signature introuvable : $KEY_FILE"
 [[ -z "$(git status --porcelain)" ]] || die "Working tree non propre : commite ou stash d'abord."
 git rev-parse "v$VERSION" >/dev/null 2>&1 && die "Le tag v$VERSION existe déjà."

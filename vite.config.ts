@@ -2,12 +2,20 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+const host = process.env.TAURI_DEV_HOST;
+// En mode Tauri (desktop), on désactive le service worker PWA :
+// l'app est déjà installée en natif, le SW ne ferait que servir du cache périmé.
+const isTauri = !!process.env.TAURI_ENV_PLATFORM;
+
 export default defineConfig({
+  define: {
+    "import.meta.env.PACKAGE_VERSION": JSON.stringify(process.env.npm_package_version || "dev"),
+  },
   plugins: [
     react(),
-    VitePWA({
+    ...(isTauri ? [] : [VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg"],
+      includeAssets: ["favicon.svg", "favicon.ico", "apple-touch-icon.png"],
       manifest: {
         name: "maPoche Finance",
         short_name: "maPoche",
@@ -18,9 +26,9 @@ export default defineConfig({
         orientation: "portrait",
         start_url: "/",
         icons: [
-          { src: "/logo.png", sizes: "192x192", type: "image/png" },
-          { src: "/logo.png", sizes: "512x512", type: "image/png" },
-          { src: "/logo.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {
@@ -42,7 +50,7 @@ export default defineConfig({
           },
         ],
       },
-    }),
+    })]),
   ],
   resolve: {
     alias: { "@": "/src" },
@@ -59,5 +67,14 @@ export default defineConfig({
       }
     },
     chunkSizeWarningLimit: 1000,
-  }
+  },
+  // Tauri: port fixe + désactive le nettoyage d'écran pour voir les logs Rust
+  clearScreen: false,
+  server: {
+    port: 1420,
+    strictPort: true,
+    host: host || false,
+    hmr: host ? { protocol: "ws", host, port: 1421 } : undefined,
+    watch: { ignored: ["**/src-tauri/**"] },
+  },
 });

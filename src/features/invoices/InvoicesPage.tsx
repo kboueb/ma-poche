@@ -16,11 +16,13 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import {
-  Plus, FileText, Trash2, Printer, Check, Send, XCircle, Banknote, AlertTriangle, Calendar, Clock,
+  Plus, FileText, Trash2, Printer, Check, Send, XCircle, Banknote, AlertTriangle, Calendar, Clock, Mail,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Invoice, InvoiceStatus, InvoicePayment } from "@/types";
 import { splitByPercent, percentsAreComplete, isPaymentOverdue, summarizePayments } from "@/lib/utils/invoicePayments";
+import { buildDunningMailto } from "@/lib/utils/reminders";
+import { openExternal } from "@/lib/tauri";
 
 const ISSUER_KEY = "mapoche-invoice-issuer";
 
@@ -556,6 +558,26 @@ export default function InvoicesPage() {
                   Marquer envoyée
                 </Button>
               )}
+              {liveDetail.status === "sent" && (() => {
+                // Relance : première échéance en retard, sinon la facture entière si son échéance est passée
+                const late = (liveDetail.payments || []).find((p) => isPaymentOverdue(p, today));
+                const invoiceLate = (liveDetail.payments || []).length === 0 && !!liveDetail.due_date && liveDetail.due_date < today;
+                if (!late && !invoiceLate) return null;
+                const remind = () => openExternal(buildDunningMailto({
+                  number: liveDetail.number,
+                  label: late ? late.label : "facture",
+                  amount: late ? Number(late.amount_due) - Number(late.amount_paid) : detailTotals?.ttc ?? 0,
+                  dueDate: late ? late.due_date : liveDetail.due_date,
+                  clientName: liveDetail.project?.client_name,
+                  clientDetails: liveDetail.client_details,
+                  issuerName: liveDetail.issuer_name,
+                })).catch(() => toast.error("Impossible d'ouvrir la messagerie"));
+                return (
+                  <Button variant="danger" icon={<Mail className="w-4 h-4" />} onClick={remind}>
+                    Relancer le client
+                  </Button>
+                );
+              })()}
               {liveDetail.status === "sent" && (
                 <div className="flex gap-2 flex-1">
                   <Select

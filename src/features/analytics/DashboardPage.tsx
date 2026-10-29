@@ -16,6 +16,7 @@ import TransactionForm from "@/features/transactions/TransactionForm";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { computeAccountBalance, computeTotalBalance } from "@/lib/utils/accounts";
+import { useTaxProvision } from "@/hooks/useTaxProvision";
 import { PageHeader } from "@/components/ui/PageHeader";
 import AppIcon from "@/components/ui/AppIcon";
 import MissionsDashboard from "./MissionsDashboard";
@@ -101,6 +102,7 @@ export default function DashboardPage() {
   const cashflow = income - expenses;
   const savingsRate = income > 0 ? (cashflow / income) * 100 : 0;
 
+  const provision = useTaxProvision();
   const totalBalance = useMemo(
     () => computeTotalBalance(accounts, transactions, convertToBase),
     [accounts, transactions, globalCurrency]
@@ -177,6 +179,17 @@ export default function DashboardPage() {
                   <p className={`text-xs mt-1.5 font-medium ${cashflow >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                     {cashflow >= 0 ? "+" : ""}{formatCurrency(cashflow)} ce mois · {savingsRate.toFixed(0)}% épargné
                   </p>
+                  {provision && provision.outstanding > 0 && (
+                    <button
+                      onClick={() => navigate("/settings")}
+                      title={`${provision.rate} % du CA ${new Date().getFullYear()} (${formatCurrency(provision.revenue)}) − ${formatCurrency(provision.paid)} déjà payés`}
+                      className="mt-3 flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-xs text-left hover:bg-amber-500/15 transition-colors"
+                    >
+                      <span className="text-text-secondary">Disponible réel</span>
+                      <span className="font-mono font-bold tabular-nums text-text-primary">{formatCurrency(totalBalance - provision.outstanding)}</span>
+                      <span className="text-amber-400">· {formatCurrency(provision.outstanding)} à garder pour impôts</span>
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 bg-surface-1/70 border border-surface-3 rounded-xl p-1 shrink-0 w-fit">
                   <button

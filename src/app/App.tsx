@@ -17,6 +17,7 @@ import { Logo } from "@/components/ui/Logo";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import UpdateBanner from "@/components/layout/UpdateBanner";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useDueReminders } from "@/hooks/useDueReminders";
 import LoginPage from "./LoginPage";
 import ResetPasswordPage from "./ResetPasswordPage";
 
@@ -83,6 +84,9 @@ function AnimatedRoutes() {
 function AuthenticatedLayout() {
   // Auto-refresh data when PWA comes back to foreground
   useRefreshOnFocus();
+
+  // Rappels d'échéances et factures en retard, quelle que soit la page ouverte
+  useDueReminders();
 
   // Raccourcis clavier globaux (⌘K, N, ?)
   useEffect(() => initGlobalShortcuts(), []);

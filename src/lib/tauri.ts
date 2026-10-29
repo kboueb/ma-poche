@@ -19,3 +19,13 @@ export function isMac(): boolean {
 export function isMacDesktop(): boolean {
   return isTauri() && isMac();
 }
+
+/** Ouvre un lien externe (mailto:…) : via le plugin opener dans l'app desktop, sinon via le navigateur. */
+export async function openExternal(url: string): Promise<void> {
+  if (isTauri()) {
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(url);
+    return;
+  }
+  window.location.href = url;
+}

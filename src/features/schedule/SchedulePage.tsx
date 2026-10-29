@@ -6,37 +6,19 @@ import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useProjectsStore } from "@/stores/useProjectsStore";
 import { useInvoicesStore } from "@/stores/useInvoicesStore";
 import { supabase } from "@/lib/supabase";
-import { formatCurrency } from "@/lib/utils/currency";
+import { formatCurrency, convertToBase } from "@/lib/utils/currency";
+import { computeTotalBalance } from "@/lib/utils/accounts";
 import { formatDate } from "@/lib/utils/dates";
 import { computeUpcomingPayments, type UpcomingPayment } from "@/lib/utils/upcomingPayments";
-import { requestNotificationPermission, sendNotification } from "@/lib/services/notificationService";
+import { requestNotificationPermission } from "@/lib/services/notificationService";
+import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useTaxProvision } from "@/hooks/useTaxProvision";
+import { ForecastCard } from "./ForecastCard";
 import { Bell, BellOff, CalendarClock, Repeat, Landmark, CheckCircle2, Briefcase, BadgeCheck, Banknote, FileText } from "lucide-react";
 import { toast } from "sonner";
 import type { Liability } from "@/types";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
-
-const NOTIF_KEY = "mapoche-schedule-notified";
-
-function notifiedToday(ids: string[]): boolean {
-  try {
-    const raw = localStorage.getItem(NOTIF_KEY);
-    if (!raw) return false;
-    const { date, ids: saved } = JSON.parse(raw) as { date: string; ids: string[] };
-    const today = new Date().toISOString().slice(0, 10);
-    return date === today && ids.every((id) => saved.includes(id));
-  } catch {
-    return false;
-  }
-}
-
-function markNotified(ids: string[]) {
-  try {
-    localStorage.setItem(NOTIF_KEY, JSON.stringify({ date: new Date().toISOString().slice(0, 10), ids }));
-  } catch {
-    // ignore
-  }
-}
 
 export default function SchedulePage() {
   const { transactions, fetch: fetchTx } = useTransactionsStore();
@@ -45,46 +27,38 @@ export default function SchedulePage() {
   const { projects, milestones, fetch: fetchProjects } = useProjectsStore();
   const { invoices, fetch: fetchInvoices } = useInvoicesStore();
   const [liabilities, setLiabilities] = useState<Liability[]>([]);
-  const [notifEnabled, setNotifEnabled] = useState(false);
+  const notifEnabled = useSettingsStore((s) => s.remindersEnabled);
+  const setNotifEnabled = useSettingsStore((s) => s.setRemindersEnabled);
+  const provision = useTaxProvision();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchTx(); fetchAcc(); fetchCat(); fetchProjects(); fetchInvoices();
     supabase.from("liabilities").select("*").then(({ data }) => setLiabilities((data as Liability[]) || []));
-    if ("Notification" in window && Notification.permission === "granted") setNotifEnabled(true);
   }, [fetchTx, fetchAcc, fetchCat, fetchProjects, fetchInvoices]);
 
-  const upcoming = useMemo(
-    () => computeUpcomingPayments(transactions, liabilities, accounts, categories, 60, projects, milestones, invoices),
+  // 90 jours pour la prévision de trésorerie, 60 pour la liste
+  const upcoming90 = useMemo(
+    () => computeUpcomingPayments(transactions, liabilities, accounts, categories, 90, projects, milestones, invoices),
     [transactions, liabilities, accounts, categories, projects, milestones, invoices]
   );
+  const upcoming = useMemo(() => upcoming90.filter((p) => p.daysUntil <= 60), [upcoming90]);
+  const balance = useMemo(() => computeTotalBalance(accounts, transactions, convertToBase), [accounts, transactions]);
 
   const dueSoon = useMemo(() => upcoming.filter((p) => p.daysUntil <= 3), [upcoming]);
   const later = useMemo(() => upcoming.filter((p) => p.daysUntil > 3), [upcoming]);
 
-  // Notification auto : paiements dus sous 3 jours, une fois par jour
-  useEffect(() => {
-    if (dueSoon.length === 0 || !notifEnabled) return;
-    const ids = dueSoon.map((p) => p.id);
-    if (notifiedToday(ids)) return;
-    const total = dueSoon
-      .filter((p) => p.flow === "expense")
-      .reduce((s, p) => s + p.amount, 0);
-    sendNotification(
-      "maPoche — Échéances à venir",
-      `${dueSoon.length} échéance${dueSoon.length > 1 ? "s" : ""} sous 3 jours (${formatCurrency(total)})`
-    ).then(() => markNotified(ids)).catch(() => {});
-  }, [dueSoon, notifEnabled]);
-
   const toggleNotif = async () => {
     if (notifEnabled) {
       setNotifEnabled(false);
-      toast.info("Rappels désactivés pour cette session");
+      toast.info("Rappels désactivés");
       return;
     }
     const granted = await requestNotificationPermission();
     setNotifEnabled(granted);
-    toast[granted ? "success" : "error"](granted ? "Rappels activés" : "Permission refusée");
+    toast[granted ? "success" : "error"](
+      granted ? "Rappels activés : échéances sous 3 jours et factures en retard, même hors de cette page" : "Permission refusée"
+    );
   };
 
   const totalUpcoming = useMemo(
@@ -152,6 +126,10 @@ export default function SchedulePage() {
           </button>
         }
       />
+
+      {accounts.length > 0 && (
+        <ForecastCard startBalance={balance} upcoming={upcoming90} provision={provision ? provision.outstanding : null} />
+      )}
 
       {upcoming.length === 0 ? (
         <EmptyState

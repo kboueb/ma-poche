@@ -56,13 +56,15 @@ Ordre imposé par les dépendances (clés étrangères) :
 | ✅ Conditions de paiement (échéances, % à payer) | `InvoicesPage.tsx`, `lib/utils/invoicePayments.ts` | Fait : échéances en % du TTC (au centime), ajout/suppression depuis le détail |
 | ✅ Statut « payé » lié aux transactions | `useInvoicesStore.ts` | Fait : chaque échéance payée crée une recette liée à la mission ; la dernière solde la facture. Affichage « x/y payées » dans la liste |
 | ✅ Échéances de factures dans l'échéancier | `upcomingPayments.ts`, `SchedulePage.tsx` | Fait : échéances non réglées des factures envoyées, rappel à J-3 |
-| ⏳ Rappels hors de l'échéancier | — | Les notifications ne partent que quand la page Échéancier est ouverte : les déplacer au démarrage de l'app |
+| ✅ Rappels hors de l'échéancier | `hooks/useDueReminders.ts`, `lib/utils/reminders.ts` | Fait : au démarrage puis toutes les heures, réglage persistant ; factures en retard notifiées à part, bouton « Relancer le client » (mailto) |
+| ✅ Prévision de trésorerie | `lib/utils/cashForecast.ts`, `schedule/ForecastCard.tsx` | Fait : solde projeté 30/60/90 j, point bas, alerte découvert, scénario sans paiements clients |
+| ✅ Provision impôts & charges | `lib/utils/taxProvision.ts`, `hooks/useTaxProvision.ts` | Fait : % du CA missions de l'année − impôts payés ; « disponible réel » au tableau de bord, seuil sur la prévision |
 
 ---
 
 ## Phase 3 : Tests de régression (avant la 1.8.0)
 
-57 tests (8 fichiers) au 2026-10-29.
+73 tests (11 fichiers) au 2026-10-29.
 
 - [x] `useInvoicesStore` : paiement d'échéance, recette liée, facture soldée à la dernière échéance (Supabase mocké).
 - [ ] `useTransactionsStore` : création, suppression, transactions récurrentes.

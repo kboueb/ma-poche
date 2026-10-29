@@ -39,6 +39,7 @@ Ordre imposé par les dépendances (clés étrangères) :
 | 9 | `add_invoices.sql` | projects, transactions | ✅ |
 | 10 | `add_time_tracking.sql` | projects | ✅ |
 | 11 | `add_invoice_payments.sql` | invoices, transactions | ✅ |
+| 12 | `add_clients_quotes.sql` | projects, time_entries, invoices | ❌ à appliquer (idempotente, reprend les clients existants) |
 
 - [x] Remplir la colonne « Appliqué » (vérifier dans Supabase → Table Editor que les tables existent).
 - [x] Appliquer les manquantes dans l'ordre ci-dessus.
@@ -59,6 +60,23 @@ Ordre imposé par les dépendances (clés étrangères) :
 | ✅ Rappels hors de l'échéancier | `hooks/useDueReminders.ts`, `lib/utils/reminders.ts` | Fait : au démarrage puis toutes les heures, réglage persistant ; factures en retard notifiées à part, bouton « Relancer le client » (mailto) |
 | ✅ Prévision de trésorerie | `lib/utils/cashForecast.ts`, `schedule/ForecastCard.tsx` | Fait : solde projeté 30/60/90 j, point bas, alerte découvert, scénario sans paiements clients |
 | ✅ Provision impôts & charges | `lib/utils/taxProvision.ts`, `hooks/useTaxProvision.ts` | Fait : % du CA missions de l'année − impôts payés ; « disponible réel » au tableau de bord, seuil sur la prévision |
+
+---
+
+## Phase 2 bis : Missions (inspiré de Harvest, Freebe, Bonsai, Productive, Float)
+
+Calculs purs dans `lib/utils/missionMetrics.ts` (testés). Nécessite la migration 12.
+
+| Tâche | Fichiers | État |
+|-------|----------|------|
+| ✅ Fiche client (coordonnées, CA, encours, délai moyen de paiement) | `features/clients/ClientsPage.tsx`, `stores/useClientsStore.ts` | Fait |
+| ✅ Forfait / TJM / horaire, budget en jours (alerte 80 %), TJM réel | `ProjectsPage.tsx` | Fait |
+| ✅ Devis → mission + jalon d'acompte | `features/quotes/QuotesPage.tsx`, `stores/useQuotesStore.ts` | Fait |
+| ✅ Bilan prévu vs réel à la clôture | `ProjectsPage.tsx` | Fait |
+| ✅ Modèles de mission (tâches + jalons) | `stores/useTemplatesStore.ts` | Fait |
+| ✅ Régie mensuelle : brouillons de factures du mois | `InvoicesPage.tsx` (`?regie=AAAA-MM`) | Fait |
+| ✅ Charge 3 mois vs capacité (réglages : heures/jour, jours dispo/mois) | `MissionsDashboard.tsx`, `SettingsPage.tsx` | Fait |
+| [ ] Appliquer `add_clients_quotes.sql` en prod puis publier | — | À faire |
 
 ---
 

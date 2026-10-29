@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Publie une nouvelle version de maPoche (macOS arm64) sur le bucket Supabase `updates`.
 #
-# Usage : SUPABASE_SERVICE_ROLE_KEY=... scripts/release.sh 1.8.0 "Notes de version"
+# Usage : scripts/release.sh 1.8.0 "Notes de version" [--yes]
+#   SUPABASE_SERVICE_ROLE_KEY : variable d'environnement, sinon lue dans .env.local (ignoré par git)
+#   --yes : publie sans demander confirmation
 #
 # Étapes : vérifs → bump version → tests → build signé → latest.json → upload → commit + tag
 set -euo pipefail
 
 VERSION="${1:-}"
 NOTES="${2:-}"
+ASSUME_YES="${3:-}"
 SUPABASE_URL="https://cllhgyvomuvyidwwnlto.supabase.co"
 BUCKET="updates"
 KEY_FILE="$HOME/.tauri/mapoche.key"
@@ -19,10 +22,14 @@ step() { echo; echo "▶ $*"; }
 
 cd "$(dirname "$0")/.."
 
+if [[ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" && -f .env.local ]]; then
+  SUPABASE_SERVICE_ROLE_KEY="$(sed -n 's/^SUPABASE_SERVICE_ROLE_KEY=//p' .env.local | tr -d '"' | head -1)"
+fi
+
 # --- Vérifications ---------------------------------------------------------
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Version invalide. Usage : $0 1.8.0 \"Notes\""
 [[ -n "$NOTES" ]] || die "Notes de version manquantes."
-[[ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]] || die "SUPABASE_SERVICE_ROLE_KEY non défini."
+[[ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]] || die "SUPABASE_SERVICE_ROLE_KEY non défini (variable d'environnement ou .env.local)."
 [[ -f "$KEY_FILE" ]] || die "Clé de signature introuvable : $KEY_FILE"
 [[ -z "$(git status --porcelain)" ]] || die "Working tree non propre : commite ou stash d'abord."
 git rev-parse "v$VERSION" >/dev/null 2>&1 && die "Le tag v$VERSION existe déjà."
@@ -76,8 +83,10 @@ node -e '
 cat "$BUNDLE_DIR/latest.json"
 
 # --- Upload ----------------------------------------------------------------
-read -r -p $'\nPublier la version '"$VERSION"$' pour tous les utilisateurs ? [o/N] ' answer
-[[ "$answer" =~ ^[oOyY]$ ]] || die "Publication annulée (les fichiers de version restent modifiés localement)."
+if [[ "$ASSUME_YES" != "--yes" ]]; then
+  read -r -p $'\nPublier la version '"$VERSION"$' pour tous les utilisateurs ? [o/N] ' answer
+  [[ "$answer" =~ ^[oOyY]$ ]] || die "Publication annulée (les fichiers de version restent modifiés localement)."
+fi
 
 upload() { # upload <fichier local> <nom distant> <content-type> <cache-control>
   curl --fail-with-body -sS -X POST "$SUPABASE_URL/storage/v1/object/$BUCKET/$2" \

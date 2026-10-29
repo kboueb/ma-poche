@@ -18,6 +18,9 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import UpdateBanner from "@/components/layout/UpdateBanner";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { useDueReminders } from "@/hooks/useDueReminders";
+import { useAppLockWatcher } from "@/hooks/useAppLockWatcher";
+import { useLockStore } from "@/stores/useLockStore";
+import { LockScreen } from "@/components/layout/LockScreen";
 import LoginPage from "./LoginPage";
 import ResetPasswordPage from "./ResetPasswordPage";
 
@@ -88,6 +91,9 @@ function AuthenticatedLayout() {
   // Rappels d'échéances et factures en retard, quelle que soit la page ouverte
   useDueReminders();
 
+  // Touch ID : reverrouillage après une absence, ⌘L
+  useAppLockWatcher();
+
   // Raccourcis clavier globaux (⌘K, N, ?)
   useEffect(() => initGlobalShortcuts(), []);
 
@@ -112,6 +118,7 @@ function AuthenticatedLayout() {
 export default function App() {
   const { user, loading, init } = useAuthStore();
   const theme = useThemeStore((s) => s.theme);
+  const locked = useLockStore((s) => s.locked);
   const [showSplash, setShowSplash] = useState(true);
   const [splashDone, setSplashDone] = useState(false);
 
@@ -142,12 +149,15 @@ export default function App() {
       {showSplash && <SplashScreen onDone={handleSplashDone} />}
       <Toaster position="top-center" richColors closeButton theme={theme} />
       <UpdateBanner />
+      {user && locked && <LockScreen />}
 
       {/* Main app — renders underneath, visible once splash is gone */}
       <div
         className={`transition-opacity duration-500 ${
           isReady ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
+        // Verrouillée : l'app reste montée (formulaires en cours conservés) mais hors d'atteinte du clavier
+        {...(user && locked ? { inert: "" } : {})}
       >
         <BrowserRouter>
           <ErrorBoundary>

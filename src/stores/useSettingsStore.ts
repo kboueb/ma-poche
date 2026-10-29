@@ -10,11 +10,17 @@ interface SettingsState {
   provisionRate: number;
   /** Catégories de dépenses comptées comme impôts/charges payés (vide = détection par le nom) */
   provisionCategoryIds: string[];
+  /** App desktop verrouillée par Touch ID au lancement et après une absence */
+  appLockEnabled: boolean;
+  /** Minutes en arrière-plan avant reverrouillage (0 = à chaque retour) */
+  relockAfterMinutes: number;
   setCurrency: (c: string) => void;
   setHasSeenTour: (v: boolean) => void;
   setRemindersEnabled: (v: boolean) => void;
   setProvisionRate: (v: number) => void;
   setProvisionCategoryIds: (ids: string[]) => void;
+  setAppLockEnabled: (v: boolean) => void;
+  setRelockAfterMinutes: (v: number) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -25,11 +31,15 @@ export const useSettingsStore = create<SettingsState>()(
       remindersEnabled: false,
       provisionRate: 0,
       provisionCategoryIds: [],
+      appLockEnabled: false,
+      relockAfterMinutes: 5,
       setCurrency: (c) => set({ currency: c }),
       setHasSeenTour: (v) => set({ hasSeenTour: v }),
       setRemindersEnabled: (v) => set({ remindersEnabled: v }),
       setProvisionRate: (v) => set({ provisionRate: Math.min(100, Math.max(0, v)) }),
       setProvisionCategoryIds: (ids) => set({ provisionCategoryIds: ids }),
+      setAppLockEnabled: (v) => set({ appLockEnabled: v }),
+      setRelockAfterMinutes: (v) => set({ relockAfterMinutes: Math.max(0, v) }),
     }),
     {
       name: "mapoche-settings",

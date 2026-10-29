@@ -3,7 +3,8 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useTransactionsStore } from "@/stores/useTransactionsStore";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
-import { User, Shield, Download, Trash2, Globe, Moon, Sun, CheckCircle2, Compass, Briefcase, Bell, PiggyBank } from "lucide-react";
+import { User, Shield, Download, Trash2, Globe, Moon, Sun, CheckCircle2, Compass, Briefcase, Bell, PiggyBank, Fingerprint } from "lucide-react";
+import { touchIdAvailable, authenticateWithTouchId, parseAuthError } from "@/stores/useLockStore";
 import { useCategoriesStore } from "@/stores/useCategoriesStore";
 import { useTaxProvision } from "@/hooks/useTaxProvision";
 import { resolveTaxCategoryIds } from "@/lib/utils/taxProvision";
@@ -25,7 +26,10 @@ export default function SettingsPage() {
     remindersEnabled, setRemindersEnabled,
     provisionRate, setProvisionRate,
     provisionCategoryIds, setProvisionCategoryIds,
+    appLockEnabled, setAppLockEnabled,
+    relockAfterMinutes, setRelockAfterMinutes,
   } = useSettingsStore();
+  const [canLock, setCanLock] = useState(false);
   const { categories, fetch: fetchCat } = useCategoriesStore();
   const provision = useTaxProvision();
   const expenseCategories = categories.filter((c) => c.flow === "expense");
@@ -39,6 +43,7 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchTx();
     fetchCat();
+    touchIdAvailable().then(setCanLock);
     (async () => {
       try {
         const { isTauriRuntime } = await import("@/lib/tauri");
@@ -62,6 +67,18 @@ export default function SettingsPage() {
     const granted = await requestNotificationPermission();
     setRemindersEnabled(granted);
     if (!granted) toast.error("Notifications refusées : autorisez maPoche dans les réglages système");
+  };
+
+  // Activer comme désactiver exige Touch ID : personne d'autre ne peut retirer la protection
+  const toggleAppLock = async () => {
+    try {
+      await authenticateWithTouchId(appLockEnabled ? "désactiver le verrouillage Touch ID" : "activer le verrouillage Touch ID");
+      setAppLockEnabled(!appLockEnabled);
+      toast.success(appLockEnabled ? "Verrouillage désactivé" : "maPoche sera verrouillée au lancement · ⌘L pour verrouiller");
+    } catch (e) {
+      const { cancelled, message } = parseAuthError(String(e));
+      if (!cancelled) toast.error(message);
+    }
   };
 
   const toggleTaxCategory = (id: string) => {
@@ -304,6 +321,46 @@ export default function SettingsPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wider text-text-secondary">Sécurité & Données</h2>
         </div>
         <div className="bg-surface-1 border border-surface-3 rounded-2xl p-6 space-y-6">
+          {canLock && (
+            <div className="space-y-4 pb-6 border-b border-surface-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-surface-2 flex items-center justify-center shrink-0">
+                    <Fingerprint className="w-5 h-5 text-brand-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Verrouiller avec Touch ID</p>
+                    <p className="text-[11px] text-text-muted">Au lancement et après une absence ; mot de passe du Mac en secours. ⌘L verrouille tout de suite.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={toggleAppLock}
+                  role="switch"
+                  aria-checked={appLockEnabled}
+                  aria-label="Verrouiller avec Touch ID"
+                  className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${appLockEnabled ? "bg-brand-500" : "bg-surface-3"}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${appLockEnabled ? "left-7" : "left-1"}`} />
+                </button>
+              </div>
+              {appLockEnabled && (
+                <div className="sm:w-72 sm:ml-12">
+                  <Select
+                    label="Reverrouiller après"
+                    value={String(relockAfterMinutes)}
+                    onChange={(e) => setRelockAfterMinutes(Number(e.target.value))}
+                    options={[
+                      { value: "0", label: "Chaque retour sur l'app" },
+                      { value: "1", label: "1 minute en arrière-plan" },
+                      { value: "5", label: "5 minutes en arrière-plan" },
+                      { value: "15", label: "15 minutes en arrière-plan" },
+                      { value: "60", label: "1 heure en arrière-plan" },
+                    ]}
+                  />
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium">Exporter mes données</p>

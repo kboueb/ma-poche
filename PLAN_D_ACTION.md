@@ -12,9 +12,9 @@ Version actuelle : `1.7.0` (`package.json`, `src-tauri/tauri.conf.json`, `src-ta
 - [ ] **Sauvegarder la clé de signature Tauri** hors de la machine : `~/.tauri/mapoche.key` + son mot de passe dans un gestionnaire de mots de passe, plus une copie chiffrée ailleurs.
   Sans cette clé, plus aucune mise à jour ne peut être installée par les utilisateurs existants (irréversible).
   Le mot de passe est aujourd'hui stocké en clair à côté de la clé (`mapoche.key.password`) : un seul vol ou une seule panne de disque fait tout perdre d'un coup.
-- [ ] **Versionner `src-tauri/`** : tout le dossier (code Rust, `tauri.conf.json`, icônes, `Cargo.lock`) est aujourd'hui hors git. `src-tauri/target` est déjà ignoré, donc `git add src-tauri .gitignore` suffit.
-- [ ] Commiter le nettoyage git déjà en cours (`node_modules/` et `dist/` retirés de l'index).
-- [ ] Retirer aussi `tsconfig.tsbuildinfo` du suivi : `git rm --cached tsconfig.tsbuildinfo` + l'ajouter à `.gitignore`.
+- [x] **Versionner `src-tauri/`** et tout le code qui était hors git (missions, temps, factures, stores, tests, migrations) — fait le 2026-10-29.
+- [x] Commiter le nettoyage git (`node_modules/` et `dist/` retirés de l'index).
+- [x] Retirer `tsconfig.tsbuildinfo` du suivi et l'ignorer.
 
 **Terminé quand :** la clé est restaurable depuis une autre machine, et `git status` est propre après un `npm install && npm run build`.
 
@@ -53,19 +53,20 @@ Ordre imposé par les dépendances (clés étrangères) :
 
 | Tâche | Fichiers | Terminé quand… |
 |-------|----------|----------------|
-| Conditions de paiement (échéances, % à payer) | `src/features/invoices/InvoicesPage.tsx`, nouvelle migration | On peut définir N échéances dont la somme des % = 100, et elles s'affichent sur la facture |
-| Statut « payé » lié aux transactions | `src/stores/useInvoicesStore.ts`, `invoice_payments` | Une facture passe à « payée » quand la somme de ses paiements atteint son total, « partiellement payée » entre les deux |
-| Notifications d'échéances | `src/features/schedule/SchedulePage.tsx`, `@tauri-apps/plugin-notification` | Une notification part à J-3 et à J pour chaque échéance non payée |
+| ✅ Conditions de paiement (échéances, % à payer) | `InvoicesPage.tsx`, `lib/utils/invoicePayments.ts` | Fait : échéances en % du TTC (au centime), ajout/suppression depuis le détail |
+| ✅ Statut « payé » lié aux transactions | `useInvoicesStore.ts` | Fait : chaque échéance payée crée une recette liée à la mission ; la dernière solde la facture. Affichage « x/y payées » dans la liste |
+| ✅ Échéances de factures dans l'échéancier | `upcomingPayments.ts`, `SchedulePage.tsx` | Fait : échéances non réglées des factures envoyées, rappel à J-3 |
+| ⏳ Rappels hors de l'échéancier | — | Les notifications ne partent que quand la page Échéancier est ouverte : les déplacer au démarrage de l'app |
 
 ---
 
 ## Phase 3 : Tests de régression (avant la 1.8.0)
 
-Aujourd'hui : 6 fichiers de tests, tous sur `src/lib/utils/`. Aucun test sur les stores ni les pages.
+57 tests (8 fichiers) au 2026-10-29.
 
-- [ ] `useInvoicesStore` : calcul du statut payé / partiel / en retard, paiements partiels.
+- [x] `useInvoicesStore` : paiement d'échéance, recette liée, facture soldée à la dernière échéance (Supabase mocké).
 - [ ] `useTransactionsStore` : création, suppression, transactions récurrentes.
-- [ ] Échéancier : génération des échéances à partir des conditions de paiement.
+- [x] Échéancier : échéances des factures (envoyées / brouillons / payées).
 
 **Terminé quand :** `npm test` couvre ces cas et passe ; le script de release le lance automatiquement.
 

@@ -39,7 +39,7 @@ Ordre imposé par les dépendances (clés étrangères) :
 | 9 | `add_invoices.sql` | projects, transactions | ✅ |
 | 10 | `add_time_tracking.sql` | projects | ✅ |
 | 11 | `add_invoice_payments.sql` | invoices, transactions | ✅ |
-| 12 | `add_clients_quotes.sql` | projects, time_entries, invoices | ❌ à appliquer (idempotente, reprend les clients existants) |
+| 12 | `add_clients_quotes.sql` | projects, time_entries, invoices | ✅ |
 
 - [x] Remplir la colonne « Appliqué » (vérifier dans Supabase → Table Editor que les tables existent).
 - [x] Appliquer les manquantes dans l'ordre ci-dessus.
@@ -76,7 +76,8 @@ Calculs purs dans `lib/utils/missionMetrics.ts` (testés). Nécessite la migrati
 | ✅ Modèles de mission (tâches + jalons) | `stores/useTemplatesStore.ts` | Fait |
 | ✅ Régie mensuelle : brouillons de factures du mois | `InvoicesPage.tsx` (`?regie=AAAA-MM`) | Fait |
 | ✅ Charge 3 mois vs capacité (réglages : heures/jour, jours dispo/mois) | `MissionsDashboard.tsx`, `SettingsPage.tsx` | Fait |
-| [ ] Appliquer `add_clients_quotes.sql` en prod puis publier | — | À faire |
+| ✅ Appliquer `add_clients_quotes.sql` en prod | — | Fait le 2026-10-29 |
+| [ ] Publier la version | `scripts/release.sh` | À faire |
 
 ---
 
